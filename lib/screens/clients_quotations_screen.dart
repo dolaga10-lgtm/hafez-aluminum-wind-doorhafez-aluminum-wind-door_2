@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/workshop_models.dart';
 import '../services/pdf_generator_service.dart';
 import '../services/workshop_storage.dart';
+import '../widgets/window_2d_visualizer.dart';
 
 class ClientsQuotationsScreen extends StatefulWidget {
   final WorkshopStorage storage;
@@ -53,7 +54,7 @@ class _ClientsQuotationsScreenState extends State<ClientsQuotationsScreen> {
                   child: TextField(
                     onChanged: (v) => setState(() => _searchQuery = v),
                     decoration: InputDecoration(
-                      hintText: 'ابحث في سجل العملاء بالاسم أو رقم الهاتف...',
+                      hintText: 'ابحث في سجل العملاء بالاسم أو الهاتف...',
                       prefixIcon: const Icon(Icons.search),
                       isDense: true,
                       filled: true,
@@ -67,7 +68,7 @@ class _ClientsQuotationsScreenState extends State<ClientsQuotationsScreen> {
                 const SizedBox(width: 10),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF991B1B),
+                    backgroundColor: const Color(0xFF7F1D1D),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 12),
@@ -75,7 +76,7 @@ class _ClientsQuotationsScreenState extends State<ClientsQuotationsScreen> {
                   onPressed: () => _openClientEditor(),
                   icon: const Icon(Icons.person_add_alt_1, size: 18),
                   label: const Text(
-                    'عميل / مقايسة جديدة',
+                    'مقايسة عميل جديدة',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -98,14 +99,14 @@ class _ClientsQuotationsScreenState extends State<ClientsQuotationsScreen> {
                         ),
                         const SizedBox(height: 6),
                         const Text(
-                          'اضغط على "عميل / مقايسة جديدة" لرفع المقاسات وإصدار ملفي PDF (عرض السعر + كشف الطلبية)',
+                          'ارفع مقاسات العميل مع شاشة المعاينة الهندسية التفاعلية\nواستخرج كشف عرض السعر بالرسم والمواصفات لكل شباك',
                           textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 13, color: Colors.grey),
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF15803D),
+                            backgroundColor: const Color(0xFFD97706),
                             foregroundColor: Colors.white,
                           ),
                           onPressed: () => _openClientEditor(),
@@ -161,13 +162,13 @@ class _ClientsQuotationsScreenState extends State<ClientsQuotationsScreen> {
                                       color: const Color(0xFFFEF2F2),
                                       borderRadius: BorderRadius.circular(8),
                                       border: Border.all(
-                                          color: const Color(0xFF991B1B)),
+                                          color: const Color(0xFF7F1D1D)),
                                     ),
                                     child: Text(
                                       'الصافي: ${netPrice.toStringAsFixed(1)} ج.م',
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        color: Color(0xFF991B1B),
+                                        color: Color(0xFF7F1D1D),
                                         fontSize: 13,
                                       ),
                                     ),
@@ -176,7 +177,7 @@ class _ClientsQuotationsScreenState extends State<ClientsQuotationsScreen> {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                'التاريخ: ${client.createdAt} • عدد البنود: ${client.items.length} شباك/باب ${client.clientPhone.isNotEmpty ? "• هاتف: ${client.clientPhone}" : ""}',
+                                'التاريخ: ${client.createdAt} • عدد الفتحات: ${client.items.length} فتحة ${client.clientPhone.isNotEmpty ? "• هاتف: ${client.clientPhone}" : ""}',
                                 style: const TextStyle(
                                     fontSize: 12.5, color: Color(0xFF475569)),
                               ),
@@ -206,13 +207,22 @@ class _ClientsQuotationsScreenState extends State<ClientsQuotationsScreen> {
                                         client: client,
                                         storage: widget.storage,
                                       );
+                                      await PdfGeneratorService.savePdfToDeviceStorage(
+                                        bytes: bytes,
+                                        fileName: 'عرض_سعر_شركة_الحافظ_${client.clientName}.pdf',
+                                      );
                                       await PdfGeneratorService.previewPdfBytes(
                                           bytes,
-                                          'عرض_سعر_${client.clientName}.pdf');
+                                          'عرض_سعر_شركة_الحافظ_${client.clientName}.pdf');
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('تم حفظ عرض السعر في التحميلات Download')),
+                                        );
+                                      }
                                     },
                                     icon: const Icon(Icons.picture_as_pdf,
-                                        size: 17, color: Color(0xFF991B1B)),
-                                    label: const Text('PDF (1) عرض السعر'),
+                                        size: 17, color: Color(0xFF7F1D1D)),
+                                    label: const Text('PDF (1) عرض السعر بالرسم'),
                                   ),
                                   OutlinedButton.icon(
                                     style: OutlinedButton.styleFrom(
@@ -224,9 +234,18 @@ class _ClientsQuotationsScreenState extends State<ClientsQuotationsScreen> {
                                         client: client,
                                         storage: widget.storage,
                                       );
+                                      await PdfGeneratorService.savePdfToDeviceStorage(
+                                        bytes: bytes,
+                                        fileName: 'كشف_طلبية_شركة_الحافظ_${client.clientName}.pdf',
+                                      );
                                       await PdfGeneratorService.previewPdfBytes(
                                           bytes,
-                                          'كشف_طلبية_${client.clientName}.pdf');
+                                          'كشف_طلبية_شركة_الحافظ_${client.clientName}.pdf');
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('تم حفظ كشف الطلبية في التحميلات Download')),
+                                        );
+                                      }
                                     },
                                     icon: const Icon(Icons.fact_check_outlined,
                                         size: 17, color: Color(0xFF15803D)),
@@ -246,7 +265,7 @@ class _ClientsQuotationsScreenState extends State<ClientsQuotationsScreen> {
                                       );
                                     },
                                     icon: const Icon(Icons.share, size: 16),
-                                    label: const Text('مشاركة الـ 2 PDF معاً'),
+                                    label: const Text('مشاركة وحفظ الـ 2 PDF'),
                                   ),
                                   IconButton(
                                     icon: const Icon(Icons.delete_outline,
@@ -269,7 +288,7 @@ class _ClientsQuotationsScreenState extends State<ClientsQuotationsScreen> {
   }
 }
 
-/// شاشة رفع مقاسات العميل وإصدار كشف عرض السعر وكشف الطلبية الشامل (2 PDF)
+/// صفحة رفع المقاسات مع المعاينة الحية وإضافة الفتحات للأعلى في قائمة المقايسة
 class ClientQuotationEditorPage extends StatefulWidget {
   final WorkshopStorage storage;
   final ClientRecord? existingClient;
@@ -348,12 +367,11 @@ class _ClientQuotationEditorPageState extends State<ClientQuotationEditorPage>
     await widget.storage.saveClientRecord(record);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-          content:
-              Text('تم حفظ ملف العميل "${record.clientName}" في سجل العملاء')),
+      SnackBar(content: Text('تم حفظ مقايسة العميل "${record.clientName}" بنجاح')),
     );
   }
 
+  /// نافذة إضافة الفتحة مع المعاينة الحية المباشرة وهي بتترسم فوق فوراً
   void _showAddOrEditWindowModal({ClientWindowItem? existing, int? editIdx}) {
     final sectors = widget.storage.sectors;
     final glasses = widget.storage.glassTypes;
@@ -363,14 +381,19 @@ class _ClientQuotationEditorPageState extends State<ClientQuotationEditorPage>
         ? (widget.storage.getSectorById(existing.sectorId) ?? sectors.first)
         : sectors.first;
 
-    final labelCtrl =
-        TextEditingController(text: existing?.label ?? 'شباك رقم ${_items.length + 1}');
+    final labelCtrl = TextEditingController(
+        text: existing?.label ?? 'فتحة رقم ${_items.length + 1}');
     final widthCtrl = TextEditingController(
         text: existing != null ? existing.widthCm.toString() : '150');
     final heightCtrl = TextEditingController(
         text: existing != null ? existing.heightCm.toString() : '120');
     final qtyCtrl = TextEditingController(
         text: existing != null ? existing.quantity.toString() : '1');
+
+    String unitType = existing?.unitType ?? 'شباك';
+    String openType = existing?.openType ?? 'جرار';
+    String barType = existing?.barType ?? 'بار عادي';
+    String openDirection = existing?.openDirection ?? 'يمين للداخل';
 
     int sashCount = existing?.sashCount ?? selectedSector.defaultSashCount;
     bool hasGlass = existing?.hasGlass ?? true;
@@ -379,8 +402,7 @@ class _ClientQuotationEditorPageState extends State<ClientQuotationEditorPage>
     GlassTypeItem glass1 = glasses.isNotEmpty
         ? glasses.firstWhere((g) => g.id == existing?.glass1Id,
             orElse: () => glasses.first)
-        : GlassTypeItem(
-            id: 'g1', name: 'زجاج شفاف 6 مم', pricePerSquareMeter: 450);
+        : GlassTypeItem(id: 'g1', name: 'زجاج شفاف 6 مم', pricePerSquareMeter: 450);
 
     GlassTypeItem glass2 = glasses.length > 1
         ? glasses.firstWhere((g) => g.id == existing?.glass2Id,
@@ -389,381 +411,468 @@ class _ClientQuotationEditorPageState extends State<ClientQuotationEditorPage>
 
     bool hasGeorgian = existing?.hasGeorgianBars ?? false;
     final georgianMetersCtrl = TextEditingController(
-        text: existing != null
-            ? existing.georgianMetersPerWindow.toString()
-            : '3.0');
+        text: existing != null ? existing.georgianMetersPerWindow.toString() : '3.0');
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) => AlertDialog(
-          title: Text(existing == null
-              ? 'إضافة شباك / باب لمقايسة العميل'
-              : 'تعديل بيانات الشباك'),
-          content: SingleChildScrollView(
+        builder: (ctx, setModalState) {
+          final double curW = double.tryParse(widthCtrl.text.trim()) ?? 150.0;
+          final double curH = double.tryParse(heightCtrl.text.trim()) ?? 120.0;
+          final double singleArea = (curW / 100.0) * (curH / 100.0);
+          final int curQty = int.tryParse(qtyCtrl.text.trim()) ?? 1;
+
+          return Container(
+            height: MediaQuery.of(ctx).size.height * 0.90,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextField(
-                  controller: labelCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'وصف البند / المكان (مثلاً: شباك غرفة، بلكونة)',
-                    border: OutlineInputBorder(),
+                // رأس المودال
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF1B110A),
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        existing == null ? 'إضافة فتحة جديدة مع المعاينة' : 'تعديل الفتحة',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
 
-                // اختيار القطاع مع عرض صورته وسعر المتر
-                DropdownButtonFormField<String>(
-                  value: selectedSector.id,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'اختر القطاع (شامل القطاعات المخصصة)',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: sectors
-                      .map((s) => DropdownMenuItem<String>(
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 1. شاشة المعاينة الهندسية التفاعلية الفورية (تترسم مباشرة أثناء تغيير الأبعاد والخيارات)
+                        Window2DVisualizer(
+                          widthCm: curW,
+                          heightCm: curH,
+                          unitType: unitType,
+                          openType: openType,
+                          sashCount: sashCount,
+                          barType: barType,
+                          openDirection: openDirection,
+                          hasGlass: hasGlass,
+                          isDoubleGlass: isDoubleGlass,
+                          hasGeorgian: hasGeorgian,
+                          height: 210,
+                        ),
+                        const SizedBox(height: 12),
+
+                        // مؤشر المساحة والسعر الفوري للمتر
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFD97706)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'مساحة الفتحة: ${singleArea.toStringAsFixed(2)} م² (الإجمالي: ${(singleArea * curQty).toStringAsFixed(2)} م²)',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF92400E)),
+                              ),
+                              Text(
+                                'سعر المتر: ${selectedSector.pricePerSquareMeter.toStringAsFixed(0)} ج.م/م²',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF7F1D1D)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // 2. إدخال المقاسات والوصف
+                        TextField(
+                          controller: labelCtrl,
+                          decoration: const InputDecoration(
+                            labelText: 'وصف الفتحة / الغرفة (شباك صالة، باب بلكونة، مطبخ...)',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: widthCtrl,
+                                keyboardType: TextInputType.number,
+                                onChanged: (_) => setModalState(() {}),
+                                decoration: const InputDecoration(
+                                  labelText: 'العرض (سم)',
+                                  border: OutlineInputBorder(),
+                                  isDense: true,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: TextField(
+                                controller: heightCtrl,
+                                keyboardType: TextInputType.number,
+                                onChanged: (_) => setModalState(() {}),
+                                decoration: const InputDecoration(
+                                  labelText: 'الارتفاع (سم)',
+                                  border: OutlineInputBorder(),
+                                  isDense: true,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: TextField(
+                                controller: qtyCtrl,
+                                keyboardType: TextInputType.number,
+                                onChanged: (_) => setModalState(() {}),
+                                decoration: const InputDecoration(
+                                  labelText: 'العدد',
+                                  border: OutlineInputBorder(),
+                                  isDense: true,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // 3. خيارات المعاينة: نوع الفتحة وطريقة الفتح ونوع البار واتجاه الفتح
+                        Row(
+                          children: [
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                value: unitType,
+                                decoration: const InputDecoration(labelText: 'نوع الفتحة', border: OutlineInputBorder(), isDense: true),
+                                items: const [
+                                  DropdownMenuItem(value: 'شباك', child: Text('🪟 شباك')),
+                                  DropdownMenuItem(value: 'باب', child: Text('🚪 باب')),
+                                  DropdownMenuItem(value: 'مطبخ', child: Text('🍳 مطبخ')),
+                                ],
+                                onChanged: (v) {
+                                  if (v != null) setModalState(() => unitType = v);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                value: openType,
+                                decoration: const InputDecoration(labelText: 'طريقة الفتح', border: OutlineInputBorder(), isDense: true),
+                                items: const [
+                                  DropdownMenuItem(value: 'جرار', child: Text('جرار (منزلق)')),
+                                  DropdownMenuItem(value: 'مفصلي', child: Text('مفصلي')),
+                                  DropdownMenuItem(value: 'قلاب', child: Text('قلاب')),
+                                  DropdownMenuItem(value: 'ثابت', child: Text('ثابت')),
+                                ],
+                                onChanged: (v) {
+                                  if (v != null) setModalState(() => openType = v);
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+
+                        Row(
+                          children: [
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                value: barType,
+                                decoration: const InputDecoration(labelText: 'نوع البار', border: OutlineInputBorder(), isDense: true),
+                                items: const [
+                                  DropdownMenuItem(value: 'بار عادي', child: Text('بار عادي')),
+                                  DropdownMenuItem(value: 'بار مقلوب', child: Text('بار مقلوب')),
+                                  DropdownMenuItem(value: 'بدون بار', child: Text('بدون بار')),
+                                ],
+                                onChanged: (v) {
+                                  if (v != null) setModalState(() => barType = v);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                value: openDirection,
+                                decoration: const InputDecoration(labelText: 'اتجاه الفتح', border: OutlineInputBorder(), isDense: true),
+                                items: const [
+                                  DropdownMenuItem(value: 'يمين للداخل', child: Text('يمين للداخل')),
+                                  DropdownMenuItem(value: 'شمال للداخل', child: Text('شمال للداخل')),
+                                  DropdownMenuItem(value: 'يمين للخارج', child: Text('يمين للخارج')),
+                                  DropdownMenuItem(value: 'شمال للخارج', child: Text('شمال للخارج')),
+                                ],
+                                onChanged: (v) {
+                                  if (v != null) setModalState(() => openDirection = v);
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+
+                        // عدد الضلف
+                        DropdownButtonFormField<int>(
+                          value: sashCount,
+                          decoration: const InputDecoration(labelText: 'عدد الضلف', border: OutlineInputBorder(), isDense: true),
+                          items: const [
+                            DropdownMenuItem(value: 1, child: Text('1 ضلفة')),
+                            DropdownMenuItem(value: 2, child: Text('2 ضلفة')),
+                            DropdownMenuItem(value: 3, child: Text('3 ضلفة')),
+                            DropdownMenuItem(value: 4, child: Text('4 ضلفة')),
+                          ],
+                          onChanged: (v) {
+                            if (v != null) setModalState(() => sashCount = v);
+                          },
+                        ),
+                        const SizedBox(height: 10),
+
+                        // اختيار القطاع (الـ 25 قطاعاً بجميع الشركات)
+                        DropdownButtonFormField<String>(
+                          value: selectedSector.id,
+                          isExpanded: true,
+                          decoration: const InputDecoration(labelText: 'القطاع وخلوصات التخصيم', border: OutlineInputBorder(), isDense: true),
+                          items: sectors.map((s) => DropdownMenuItem<String>(
                             value: s.id,
                             child: Row(
                               children: [
-                                if (s.imagePath != null &&
-                                    s.imagePath!.isNotEmpty &&
-                                    File(s.imagePath!).existsSync())
+                                if (s.imagePath != null && s.imagePath!.isNotEmpty && File(s.imagePath!).existsSync())
                                   Padding(
-                                    padding: const EdgeInsets.only(left: 8),
-                                    child: Image.file(
-                                      File(s.imagePath!),
-                                      width: 24,
-                                      height: 24,
-                                      fit: BoxFit.cover,
-                                    ),
+                                    padding: const EdgeInsets.only(left: 6),
+                                    child: Image.file(File(s.imagePath!), width: 20, height: 20, fit: BoxFit.cover),
                                   ),
                                 Expanded(
                                   child: Text(
-                                    '${s.name} (${s.pricePerSquareMeter.toStringAsFixed(0)} ج.م/م²)',
+                                    '[${s.companyGroup}] ${s.name} (${s.pricePerSquareMeter.toStringAsFixed(0)} ج.م/م²)',
                                     overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12),
                                   ),
                                 ),
                               ],
                             ),
-                          ))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) {
-                      final found = widget.storage.getSectorById(val);
-                      if (found != null) {
-                        setModalState(() {
-                          selectedSector = found;
-                          sashCount = found.defaultSashCount;
-                        });
-                      }
-                    }
-                  },
-                ),
-                const SizedBox(height: 12),
+                          )).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              final found = widget.storage.getSectorById(val);
+                              if (found != null) {
+                                setModalState(() => selectedSector = found);
+                              }
+                            }
+                          },
+                        ),
+                        const Divider(height: 22),
 
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: widthCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'العرض (سم)',
-                          border: OutlineInputBorder(),
+                        // إعدادات الزجاج
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('إضافة زجاج', style: TextStyle(fontWeight: FontWeight.bold)),
+                          value: hasGlass,
+                          onChanged: (v) => setModalState(() => hasGlass = v),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: heightCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'الارتفاع (سم)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: qtyCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'العدد (كم شباك بنفس المقاس)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: DropdownButtonFormField<int>(
-                        value: sashCount,
-                        decoration: const InputDecoration(
-                          labelText: 'عدد الضلف',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: const [
-                          DropdownMenuItem(value: 1, child: Text('1 ضلفة')),
-                          DropdownMenuItem(value: 2, child: Text('2 ضلفة')),
-                          DropdownMenuItem(value: 3, child: Text('3 ضلفة')),
-                          DropdownMenuItem(value: 4, child: Text('4 ضلفة')),
-                        ],
-                        onChanged: (v) {
-                          if (v != null) setModalState(() => sashCount = v);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const Divider(height: 22),
-
-                // إعدادات الزجاج (سنجل أو دبل = فردتين + سبيسر)
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'إضافة زجاج للشباك',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  value: hasGlass,
-                  onChanged: (v) => setModalState(() => hasGlass = v),
-                ),
-                if (hasGlass) ...[
-                  SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment<bool>(
-                        value: false,
-                        label: Text('زجاج سنجل (فردة واحدة)'),
-                        icon: Icon(Icons.crop_square),
-                      ),
-                      ButtonSegment<bool>(
-                        value: true,
-                        label: Text('زجاج دبل (فردتين + سبيسر)'),
-                        icon: Icon(Icons.layers),
-                      ),
-                    ],
-                    selected: {isDoubleGlass},
-                    onSelectionChanged: (s) =>
-                        setModalState(() => isDoubleGlass = s.first),
-                  ),
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    value: glass1.id,
-                    isExpanded: true,
-                    decoration: InputDecoration(
-                      labelText: isDoubleGlass
-                          ? 'اختر فردة الزجاج الأولى'
-                          : 'اختر نوع الزجاج',
-                      border: const OutlineInputBorder(),
-                    ),
-                    items: glasses
-                        .map((g) => DropdownMenuItem(
+                        if (hasGlass) ...[
+                          SegmentedButton<bool>(
+                            segments: const [
+                              ButtonSegment<bool>(value: false, label: Text('سنجل (فردة)')),
+                              ButtonSegment<bool>(value: true, label: Text('دبل (فردتين + سبيسر)')),
+                            ],
+                            selected: {isDoubleGlass},
+                            onSelectionChanged: (s) => setModalState(() => isDoubleGlass = s.first),
+                          ),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            value: glass1.id,
+                            isExpanded: true,
+                            decoration: InputDecoration(
+                              labelText: isDoubleGlass ? 'فردة الزجاج الأولى' : 'نوع الزجاج',
+                              border: const OutlineInputBorder(),
+                              isDense: true,
+                            ),
+                            items: glasses.map((g) => DropdownMenuItem(
                               value: g.id,
-                              child: Text(
-                                  '${g.name} (${g.pricePerSquareMeter.toStringAsFixed(0)} ج.م/م²)'),
-                            ))
-                        .toList(),
-                    onChanged: (v) {
-                      if (v != null) {
-                        setModalState(() {
-                          glass1 = glasses.firstWhere((e) => e.id == v);
-                        });
-                      }
-                    },
-                  ),
-                  if (isDoubleGlass) ...[
-                    const SizedBox(height: 10),
-                    DropdownButtonFormField<String>(
-                      value: glass2.id,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'اختر فردة الزجاج الثانية (في الدبل)',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: glasses
-                          .map((g) => DropdownMenuItem(
+                              child: Text('${g.name} (${g.pricePerSquareMeter.toStringAsFixed(0)} ج.م/م²)', style: const TextStyle(fontSize: 12)),
+                            )).toList(),
+                            onChanged: (v) {
+                              if (v != null) {
+                                setModalState(() => glass1 = glasses.firstWhere((e) => e.id == v));
+                              }
+                            },
+                          ),
+                          if (isDoubleGlass) ...[
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<String>(
+                              value: glass2.id,
+                              isExpanded: true,
+                              decoration: const InputDecoration(labelText: 'فردة الزجاج الثانية (دبل)', border: OutlineInputBorder(), isDense: true),
+                              items: glasses.map((g) => DropdownMenuItem(
                                 value: g.id,
-                                child: Text(
-                                    '${g.name} (${g.pricePerSquareMeter.toStringAsFixed(0)} ج.م/م²)'),
-                              ))
-                          .toList(),
-                      onChanged: (v) {
-                        if (v != null) {
-                          setModalState(() {
-                            glass2 = glasses.firstWhere((e) => e.id == v);
-                          });
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEFF6FF),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '✓ سيتم احتساب: ثمن (${glass1.name}) + ثمن (${glass2.name}) + السبيسر المحيط (${widget.storage.pricingSettings.doubleSpacerPricePerMeter.toStringAsFixed(0)} ج.م/متر طولي).',
-                        style: const TextStyle(
-                            fontSize: 11.5,
-                            color: Color(0xFF1D4ED8),
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ],
-                const Divider(height: 22),
+                                child: Text('${g.name} (${g.pricePerSquareMeter.toStringAsFixed(0)} ج.م/م²)', style: const TextStyle(fontSize: 12)),
+                              )).toList(),
+                              onChanged: (v) {
+                                if (v != null) {
+                                  setModalState(() => glass2 = glasses.firstWhere((e) => e.id == v));
+                                }
+                              },
+                            ),
+                          ],
+                        ],
+                        const Divider(height: 20),
 
-                // إعدادات الجورجيا
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    'إضافة أعواد جورجيا (${widget.storage.pricingSettings.georgianBarPricePerMeter.toStringAsFixed(0)} ج.م/متر)',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  value: hasGeorgian,
-                  onChanged: (v) => setModalState(() => hasGeorgian = v),
-                ),
-                if (hasGeorgian)
-                  TextField(
-                    controller: georgianMetersCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'إجمالي أمتار الجورجيا في الشباك الواحد (متر)',
-                      helperText: 'مثال: 3.5 متر طولي للشباك',
-                      border: OutlineInputBorder(),
+                        // جورجيا
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text('أعواد جورجيا (${widget.storage.pricingSettings.georgianBarPricePerMeter.toStringAsFixed(0)} ج.م/متر)', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          value: hasGeorgian,
+                          onChanged: (v) => setModalState(() => hasGeorgian = v),
+                        ),
+                        if (hasGeorgian)
+                          TextField(
+                            controller: georgianMetersCtrl,
+                            keyboardType: TextInputType.number,
+                            onChanged: (_) => setModalState(() {}),
+                            decoration: const InputDecoration(labelText: 'أمتار الجورجيا بالفتحة', border: OutlineInputBorder(), isDense: true),
+                          ),
+                      ],
                     ),
                   ),
+                ),
+
+                // زر تأكيد الإضافة لتنزل الفتحة فوراً في القائمة العلوية
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  color: Colors.white,
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF15803D),
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () {
+                        final w = double.tryParse(widthCtrl.text.trim()) ?? 120.0;
+                        final h = double.tryParse(heightCtrl.text.trim()) ?? 120.0;
+                        final q = int.tryParse(qtyCtrl.text.trim()) ?? 1;
+                        final geoM = double.tryParse(georgianMetersCtrl.text.trim()) ?? 0.0;
+
+                        final newItem = ClientWindowItem(
+                          id: existing?.id ?? 'item_${DateTime.now().millisecondsSinceEpoch}',
+                          label: labelCtrl.text.trim().isEmpty ? '$unitType $openType' : labelCtrl.text.trim(),
+                          unitType: unitType,
+                          openType: openType,
+                          barType: barType,
+                          openDirection: openDirection,
+                          sectorId: selectedSector.id,
+                          sectorName: selectedSector.name,
+                          sectorPricePerM2: selectedSector.pricePerSquareMeter,
+                          widthCm: w,
+                          heightCm: h,
+                          quantity: q > 0 ? q : 1,
+                          sashCount: sashCount,
+                          hasGlass: hasGlass,
+                          isDoubleGlass: isDoubleGlass,
+                          glass1Id: glass1.id,
+                          glass1Name: glass1.name,
+                          glass1PricePerM2: glass1.pricePerSquareMeter,
+                          glass2Id: glass2.id,
+                          glass2Name: glass2.name,
+                          glass2PricePerM2: glass2.pricePerSquareMeter,
+                          spacerPricePerMeter: widget.storage.pricingSettings.doubleSpacerPricePerMeter,
+                          hasGeorgianBars: hasGeorgian,
+                          georgianMetersPerWindow: hasGeorgian ? geoM : 0.0,
+                          georgianPricePerMeter: widget.storage.pricingSettings.georgianBarPricePerMeter,
+                        );
+
+                        setState(() {
+                          if (editIdx != null) {
+                            _items[editIdx] = newItem;
+                          } else {
+                            // إضافة الفتحة في أعلى القائمة لتظهر فوق فوراً
+                            _items.insert(0, newItem);
+                          }
+                        });
+                        Navigator.pop(ctx);
+                      },
+                      icon: const Icon(Icons.check_circle),
+                      label: const Text(
+                        'إضافة الفتحة إلى قائمة المقايسة فوق',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('إلغاء'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF15803D),
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () {
-                final w = double.tryParse(widthCtrl.text.trim()) ?? 120.0;
-                final h = double.tryParse(heightCtrl.text.trim()) ?? 120.0;
-                final q = int.tryParse(qtyCtrl.text.trim()) ?? 1;
-                final geoM =
-                    double.tryParse(georgianMetersCtrl.text.trim()) ?? 0.0;
-
-                final newItem = ClientWindowItem(
-                  id: existing?.id ??
-                      'win_${DateTime.now().millisecondsSinceEpoch}',
-                  label: labelCtrl.text.trim().isEmpty
-                      ? 'شباك'
-                      : labelCtrl.text.trim(),
-                  sectorId: selectedSector.id,
-                  sectorName: selectedSector.name,
-                  sectorPricePerM2: selectedSector.pricePerSquareMeter,
-                  widthCm: w,
-                  heightCm: h,
-                  quantity: q > 0 ? q : 1,
-                  sashCount: sashCount,
-                  hasGlass: hasGlass,
-                  isDoubleGlass: isDoubleGlass,
-                  glass1Id: glass1.id,
-                  glass1Name: glass1.name,
-                  glass1PricePerM2: glass1.pricePerSquareMeter,
-                  glass2Id: glass2.id,
-                  glass2Name: glass2.name,
-                  glass2PricePerM2: glass2.pricePerSquareMeter,
-                  spacerPricePerMeter:
-                      widget.storage.pricingSettings.doubleSpacerPricePerMeter,
-                  hasGeorgianBars: hasGeorgian,
-                  georgianMetersPerWindow: hasGeorgian ? geoM : 0.0,
-                  georgianPricePerMeter:
-                      widget.storage.pricingSettings.georgianBarPricePerMeter,
-                );
-
-                setState(() {
-                  if (editIdx != null) {
-                    _items[editIdx] = newItem;
-                  } else {
-                    _items.add(newItem);
-                  }
-                });
-                Navigator.pop(ctx);
-              },
-              child: const Text('إضافة وحفظ البند'),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool minOneM2 =
-        widget.storage.pricingSettings.enforceMinimumOneSquareMeter;
+    final bool minOneM2 = widget.storage.pricingSettings.enforceMinimumOneSquareMeter;
 
     double totalSectorsCost = 0.0;
     double totalGlassCost = 0.0;
     double totalGeoCost = 0.0;
+    double totalAreaAll = 0.0;
+
     for (final item in _items) {
       final sec = widget.storage.getSectorById(item.sectorId);
+      final area = item.totalAreaM2(minOneM2: minOneM2);
+      totalAreaAll += area;
       totalSectorsCost += item.calculateSectorCost(minOneM2: minOneM2);
-      totalGlassCost +=
-          item.calculateGlassAndSpacerCost(sec, minOneM2: minOneM2);
+      totalGlassCost += item.calculateGlassAndSpacerCost(sec, minOneM2: minOneM2);
       totalGeoCost += item.calculateGeorgianCost();
     }
     final double discount = double.tryParse(_discountCtrl.text.trim()) ?? 0.0;
-    final double grandNet =
-        (totalSectorsCost + totalGlassCost + totalGeoCost - discount)
-            .clamp(0.0, double.infinity);
+    final double grandNet = (totalSectorsCost + totalGlassCost + totalGeoCost - discount).clamp(0.0, double.infinity);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('رفع مقاسات العميل وإصدار الـ 2 PDF'),
-        backgroundColor: const Color(0xFF991B1B),
+        title: const Text('مقايسة عميل — شركة الحافظ'),
+        backgroundColor: const Color(0xFF1B110A),
         foregroundColor: Colors.white,
         actions: [
           TextButton.icon(
             onPressed: _saveClientToHistory,
-            icon: const Icon(Icons.save, color: Colors.white),
-            label: const Text(
-              'حفظ بالسجل',
-              style:
-                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
+            icon: const Icon(Icons.save, color: Color(0xFFF59E0B)),
+            label: const Text('حفظ بالسجل', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
-          indicatorColor: Colors.amberAccent,
+          indicatorColor: const Color(0xFFF59E0B),
           tabs: const [
-            Tab(
-              icon: Icon(Icons.request_quote),
-              text: '1. كشف عرض السعر للعميل',
-            ),
-            Tab(
-              icon: Icon(Icons.carpenter),
-              text: '2. كشف الطلبية والتخصيم والزجاج',
-            ),
+            Tab(icon: Icon(Icons.request_quote), text: '1. كشف عرض السعر بالرسم'),
+            Tab(icon: Icon(Icons.carpenter), text: '2. كشف الطلبية والتخصيم'),
           ],
         ),
       ),
       body: Column(
         children: [
-          // بيانات العميل الأساسية
+          // شريط بيانات العميل وزر إضافة فتحة
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             color: const Color(0xFFF8FAFC),
             child: Column(
               children: [
@@ -773,42 +882,24 @@ class _ClientQuotationEditorPageState extends State<ClientQuotationEditorPage>
                       flex: 2,
                       child: TextField(
                         controller: _clientNameCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'اسم العميل',
-                          isDense: true,
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(),
-                        ),
+                        decoration: const InputDecoration(labelText: 'اسم العميل', isDense: true, filled: true, fillColor: Colors.white, border: OutlineInputBorder()),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Expanded(
                       child: TextField(
                         controller: _clientPhoneCtrl,
                         keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          labelText: 'رقم الهاتف',
-                          isDense: true,
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(),
-                        ),
+                        decoration: const InputDecoration(labelText: 'رقم الهاتف', isDense: true, filled: true, fillColor: Colors.white, border: OutlineInputBorder()),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Expanded(
                       child: TextField(
                         controller: _discountCtrl,
                         keyboardType: TextInputType.number,
                         onChanged: (_) => setState(() {}),
-                        decoration: const InputDecoration(
-                          labelText: 'الخصم (ج.م)',
-                          isDense: true,
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(),
-                        ),
+                        decoration: const InputDecoration(labelText: 'الخصم (ج.م)', isDense: true, filled: true, fillColor: Colors.white, border: OutlineInputBorder()),
                       ),
                     ),
                   ],
@@ -818,14 +909,15 @@ class _ClientQuotationEditorPageState extends State<ClientQuotationEditorPage>
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF15803D),
+                      backgroundColor: const Color(0xFFD97706),
                       foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 11),
                     ),
                     onPressed: () => _showAddOrEditWindowModal(),
-                    icon: const Icon(Icons.add_box_outlined),
+                    icon: const Icon(Icons.add_photo_alternate),
                     label: const Text(
-                      '+ إضافة شباك / باب بالمقاس والقطاع والزجاج',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      '+ إضافة فتحة جديدة (تترسم بالمعاينة الهندسية وتتضاف فوق)',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
                     ),
                   ),
                 ),
@@ -833,94 +925,70 @@ class _ClientQuotationEditorPageState extends State<ClientQuotationEditorPage>
             ),
           ),
 
-          // محتوى التبويبين (عرض السعر / كشف الطلبية)
           Expanded(
             child: TabBarView(
               controller: _tabController,
               children: [
-                // التبويب الأول: كشف عرض السعر
-                _buildQuotationTab(minOneM2, totalSectorsCost, totalGlassCost,
-                    totalGeoCost, grandNet),
-                // التبويب الثاني: كشف الطلبية الشامل والتخصيم والزجاج
+                _buildQuotationTabWithDrawings(minOneM2, totalAreaAll, totalSectorsCost, totalGlassCost, totalGeoCost, grandNet),
                 _buildOrderAndCuttingTab(),
               ],
             ),
           ),
 
-          // شريط أزرار تصدير الـ 2 ملف PDF في الأسفل
+          // شريط أزرار تصدير الـ 2 PDF في الأسفل مع التوتال النهائي
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: const BoxDecoration(
-              color: Color(0xFF0F172A),
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            color: const Color(0xFF1B110A),
             child: SafeArea(
               top: false,
               child: Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white54),
-                      ),
+                      style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white54)),
                       onPressed: () async {
                         await _saveClientToHistory();
                         final rec = _buildCurrentRecord();
-                        final bytes =
-                            await PdfGeneratorService.buildQuotationPdfBytes(
-                          client: rec,
-                          storage: widget.storage,
-                        );
-                        await PdfGeneratorService.previewPdfBytes(
-                            bytes, 'عرض_سعر_${rec.clientName}.pdf');
+                        final bytes = await PdfGeneratorService.buildQuotationPdfBytes(client: rec, storage: widget.storage);
+                        final p = await PdfGeneratorService.savePdfToDeviceStorage(bytes: bytes, fileName: 'عرض_سعر_شركة_الحافظ_${rec.clientName}.pdf');
+                        await PdfGeneratorService.previewPdfBytes(bytes, 'عرض_سعر_شركة_الحافظ_${rec.clientName}.pdf');
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم حفظ عرض السعر في التحميلات: $p')));
+                        }
                       },
-                      icon: const Icon(Icons.picture_as_pdf, size: 17),
-                      label: const Text('PDF عرض السعر',
-                          style: TextStyle(fontSize: 12)),
+                      icon: const Icon(Icons.picture_as_pdf, size: 16),
+                      label: const Text('PDF عرض السعر', style: TextStyle(fontSize: 11.5)),
                     ),
                   ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white54),
-                      ),
+                      style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white54)),
                       onPressed: () async {
                         await _saveClientToHistory();
                         final rec = _buildCurrentRecord();
-                        final bytes = await PdfGeneratorService
-                            .buildOrderAndCuttingPdfBytes(
-                          client: rec,
-                          storage: widget.storage,
-                        );
-                        await PdfGeneratorService.previewPdfBytes(
-                            bytes, 'كشف_طلبية_${rec.clientName}.pdf');
+                        final bytes = await PdfGeneratorService.buildOrderAndCuttingPdfBytes(client: rec, storage: widget.storage);
+                        final p = await PdfGeneratorService.savePdfToDeviceStorage(bytes: bytes, fileName: 'كشف_طلبية_شركة_الحافظ_${rec.clientName}.pdf');
+                        await PdfGeneratorService.previewPdfBytes(bytes, 'كشف_طلبية_شركة_الحافظ_${rec.clientName}.pdf');
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم حفظ كشف الطلبية في التحميلات: $p')));
+                        }
                       },
-                      icon: const Icon(Icons.list_alt, size: 17),
-                      label: const Text('PDF كشف الطلبية',
-                          style: TextStyle(fontSize: 12)),
+                      icon: const Icon(Icons.list_alt, size: 16),
+                      label: const Text('PDF كشف الطلبية', style: TextStyle(fontSize: 11.5)),
                     ),
                   ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF15803D),
-                        foregroundColor: Colors.white,
-                      ),
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF15803D), foregroundColor: Colors.white),
                       onPressed: () async {
                         await _saveClientToHistory();
                         final rec = _buildCurrentRecord();
-                        await PdfGeneratorService.generateAndShareBothPdfs(
-                          client: rec,
-                          storage: widget.storage,
-                        );
+                        await PdfGeneratorService.generateAndShareBothPdfs(client: rec, storage: widget.storage);
                       },
                       icon: const Icon(Icons.share, size: 16),
-                      label: const Text('إصدار الـ 2 PDF',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold)),
+                      label: const Text('مشاركة الـ 2 PDF', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
@@ -932,87 +1000,175 @@ class _ClientQuotationEditorPageState extends State<ClientQuotationEditorPage>
     );
   }
 
-  Widget _buildQuotationTab(
+  /// كشف عرض السعر بالرسم الهندسي الكروكي لكل شباك وسعره ومقاسه والمساحة والتوتال النهائي
+  Widget _buildQuotationTabWithDrawings(
     bool minOneM2,
+    double totalAreaAll,
     double totalSectorsCost,
     double totalGlassCost,
     double totalGeoCost,
     double grandNet,
   ) {
     if (_items.isEmpty) {
-      return const Center(
-        child: Text('أضف شبابيك أو أبواب لعرض كشف التسعير الفوري هنا'),
-      );
+      return const Center(child: Text('أضف فتحات من الزر بالأعلى لتظهر مرسومة بالمعاينة مع أسعارها هنا'));
     }
     return ListView(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       children: [
         ...List.generate(_items.length, (idx) {
           final item = _items[idx];
           final sec = widget.storage.getSectorById(item.sectorId);
+          final singleArea = item.singleWindowAreaM2(minOneM2: minOneM2);
+          final area = item.totalAreaM2(minOneM2: minOneM2);
           final secCost = item.calculateSectorCost(minOneM2: minOneM2);
-          final glCost =
-              item.calculateGlassAndSpacerCost(sec, minOneM2: minOneM2);
+          final glCost = item.calculateGlassAndSpacerCost(sec, minOneM2: minOneM2);
           final geoCost = item.calculateGeorgianCost();
           final total = secCost + glCost + geoCost;
 
           return Card(
             margin: const EdgeInsets.only(bottom: 10),
-            child: ListTile(
-              title: Text(
-                '${idx + 1}. ${item.label} — ${item.sectorName}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(
-                      'المقاس: ${item.widthCm} × ${item.heightCm} سم • العدد: ${item.quantity} (${item.sashCount} ضلفة) • المساحة: ${item.totalAreaM2(minOneM2: minOneM2).toStringAsFixed(2)} م²'),
-                  Text('الزجاج: ${item.glassSummaryText}'),
-                  Text(
-                    'تفصيل السعر: قطاع (${secCost.toStringAsFixed(0)}) + زجاج/سبيسر (${glCost.toStringAsFixed(0)}) + جورجيا (${geoCost.toStringAsFixed(0)}) = ${total.toStringAsFixed(1)} ج.م',
-                    style: const TextStyle(
-                        color: Color(0xFF991B1B), fontWeight: FontWeight.bold),
+                  // رسم الشباك 2D المصغر
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: SizedBox(
+                      width: 82,
+                      height: 72,
+                      child: Window2DVisualizer(
+                        widthCm: item.widthCm,
+                        heightCm: item.heightCm,
+                        unitType: item.unitType,
+                        openType: item.openType,
+                        sashCount: item.sashCount,
+                        barType: item.barType,
+                        openDirection: item.openDirection,
+                        hasGlass: item.hasGlass,
+                        isDoubleGlass: item.isDoubleGlass,
+                        hasGeorgian: item.hasGeorgianBars,
+                        height: 72,
+                      ),
+                    ),
                   ),
-                ],
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit, color: Color(0xFF1D4ED8)),
-                    onPressed: () =>
-                        _showAddOrEditWindowModal(existing: item, editIdx: idx),
+                  const SizedBox(width: 10),
+
+                  // تفاصيل البند
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${idx + 1}. [${item.unitType} ${item.openType}] ${item.label}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                        ),
+                        Text(
+                          'المقاس: ${item.widthCm}×${item.heightCm} سم • العدد: ${item.quantity} • مساحة: ${singleArea.toStringAsFixed(2)} م² (إجمالي: ${area.toStringAsFixed(2)} م²)',
+                          style: const TextStyle(fontSize: 11.5, color: Color(0xFF334155)),
+                        ),
+                        Text(
+                          'القطاع: ${item.sectorName} (${item.sectorPricePerM2.toStringAsFixed(0)} ج.م/م²) • البار: ${item.barType}',
+                          style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
+                        ),
+                        Text(
+                          'الزجاج: ${item.glassSummaryText} ${item.hasGeorgianBars ? " + جورجيا" : ""}',
+                          style: const TextStyle(fontSize: 11, color: Color(0xFF7F1D1D), fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    onPressed: () => setState(() => _items.removeAt(idx)),
+
+                  // السعر الإجمالي للبند
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF2F2),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFF7F1D1D)),
+                        ),
+                        child: Text(
+                          '${total.toStringAsFixed(1)} ج.م',
+                          style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF7F1D1D), fontSize: 13),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Color(0xFF1D4ED8), size: 18),
+                            onPressed: () => _showAddOrEditWindowModal(existing: item, editIdx: idx),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+                            onPressed: () => setState(() => _items.removeAt(idx)),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
           );
         }),
+
+        // كشف التوتال المالي النهائي في الأسفل
         Card(
-          color: const Color(0xFFFEF2F2),
+          color: const Color(0xFFFEF3C7),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: const BorderSide(color: Color(0xFFD97706), width: 1.2)),
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                    'إجمالي القطاعات: ${totalSectorsCost.toStringAsFixed(1)} ج.م'),
-                Text(
-                    'إجمالي الزجاج والسبيسر: ${totalGlassCost.toStringAsFixed(1)} ج.م'),
-                Text('إجمالي الجورجيا: ${totalGeoCost.toStringAsFixed(1)} ج.م'),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('إجمالي عدد الفتحات:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text('${_items.length} فتحة (بإجمالي مساحة: ${totalAreaAll.toStringAsFixed(2)} م²)', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('إجمالي تكلفة القطاعات:'),
+                    Text('${totalSectorsCost.toStringAsFixed(1)} ج.م'),
+                  ],
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('إجمالي تكلفة الزجاج والسبيسر:'),
+                    Text('${totalGlassCost.toStringAsFixed(1)} ج.م'),
+                  ],
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('إجمالي تكلفة الجورجيا:'),
+                    Text('${totalGeoCost.toStringAsFixed(1)} ج.م'),
+                  ],
+                ),
                 const Divider(),
-                Text(
-                  'الصافي النهائي لعرض السعر: ${grandNet.toStringAsFixed(2)} ج.م',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Color(0xFF991B1B),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'الصافي الإجمالي لعرض السعر (Total):',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF7F1D1D)),
+                    ),
+                    Text(
+                      '${grandNet.toStringAsFixed(2)} ج.م',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Color(0xFF7F1D1D)),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1024,53 +1180,39 @@ class _ClientQuotationEditorPageState extends State<ClientQuotationEditorPage>
 
   Widget _buildOrderAndCuttingTab() {
     if (_items.isEmpty) {
-      return const Center(
-        child: Text('أضف شبابيك لعرض كشف الطلبية والتخصيم وتقطيع الزجاج هنا'),
-      );
+      return const Center(child: Text('أضف فتحات لعرض كشف الطلبية والتخصيم هنا'));
     }
     return ListView(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       children: _items.map((item) {
         final sec = widget.storage.getSectorById(item.sectorId);
-        final double gw = sec != null
-            ? sec.calculateGlassWidthCm(item.widthCm, item.sashCount)
-            : (item.widthCm / item.sashCount) - 10.0;
-        final double gh = sec != null
-            ? sec.calculateGlassHeightCm(item.heightCm, item.sashCount)
-            : item.heightCm - 18.0;
+        final double gw = sec != null ? sec.calculateGlassWidthCm(item.widthCm, item.sashCount) : (item.widthCm / item.sashCount) - 10.0;
+        final double gh = sec != null ? sec.calculateGlassHeightCm(item.heightCm, item.sashCount) : item.heightCm - 18.0;
         final int panesCount = item.sashCount * item.quantity;
 
         return Card(
-          margin: const EdgeInsets.only(bottom: 12),
+          margin: const EdgeInsets.only(bottom: 10),
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${item.label} (${item.widthCm}×${item.heightCm} سم — العدد: ${item.quantity}) — ${item.sectorName}',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Color(0xFF15803D)),
+                  '${item.label} [${item.unitType} ${item.openType}] (${item.widthCm}×${item.heightCm} سم — العدد: ${item.quantity}) — ${item.sectorName}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Color(0xFF15803D)),
                 ),
                 const Divider(),
                 if (sec != null)
                   ...sec.parts.map((p) {
-                    final len = p.calculatePieceLength(
-                        item.widthCm, item.heightCm, item.sashCount);
-                    final cnt =
-                        p.calculateTotalCount(item.quantity, item.sashCount);
+                    final len = p.calculatePieceLength(item.widthCm, item.heightCm, item.sashCount);
+                    final cnt = p.calculateTotalCount(item.quantity, item.sashCount);
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 2),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('• ${p.name} (${p.role}):'),
-                          Text(
-                            'المقاس: ${len.toStringAsFixed(1)} سم  |  العدد: $cnt قطعة',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
+                          Text('• ${p.name}:'),
+                          Text('طول القص: ${len.toStringAsFixed(1)} سم  |  العدد: $cnt قطعة', style: const TextStyle(fontWeight: FontWeight.bold)),
                         ],
                       ),
                     );
@@ -1079,17 +1221,15 @@ class _ClientQuotationEditorPageState extends State<ClientQuotationEditorPage>
                   const Divider(),
                   Text(
                     item.isDoubleGlass
-                        ? '• مقاس الزجاج الدبل الصافي: ${gw.toStringAsFixed(1)} × ${gh.toStringAsFixed(1)} سم — العدد: $panesCount فردة (${item.glass1Name}) + $panesCount فردة (${item.glass2Name}) + سبيسر: ${item.totalSpacerMeters(sec).toStringAsFixed(2)} متر'
-                        : '• مقاس الزجاج السنجل الصافي: ${gw.toStringAsFixed(1)} × ${gh.toStringAsFixed(1)} سم — العدد: $panesCount فردة (${item.glass1Name})',
-                    style: const TextStyle(
-                        color: Color(0xFF991B1B), fontWeight: FontWeight.bold),
+                        ? '• زجاج دبل صافي: ${gw.toStringAsFixed(1)} × ${gh.toStringAsFixed(1)} سم — العدد: $panesCount فردة (${item.glass1Name}) + $panesCount فردة (${item.glass2Name}) + سبيسر: ${item.totalSpacerMeters(sec).toStringAsFixed(2)} م'
+                        : '• زجاج سنجل صافي: ${gw.toStringAsFixed(1)} × ${gh.toStringAsFixed(1)} سم — العدد: $panesCount فردة (${item.glass1Name})',
+                    style: const TextStyle(color: Color(0xFF7F1D1D), fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                 ],
                 if (item.hasGeorgianBars)
                   Text(
-                    '• إجمالي الجورجيا المطلوبة: ${(item.georgianMetersPerWindow * item.quantity).toStringAsFixed(2)} متر طولي',
-                    style: const TextStyle(
-                        color: Color(0xFF1D4ED8), fontWeight: FontWeight.bold),
+                    '• جورجيا: ${(item.georgianMetersPerWindow * item.quantity).toStringAsFixed(2)} متر طولي',
+                    style: const TextStyle(color: Color(0xFF1D4ED8), fontWeight: FontWeight.bold, fontSize: 12),
                   ),
               ],
             ),

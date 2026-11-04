@@ -5,10 +5,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/workshop_models.dart';
 
 class WorkshopStorage extends ChangeNotifier {
-  static const String _kSectorsKey = 'sw_sectors_v4';
-  static const String _kGlassesKey = 'sw_glasses_v4';
-  static const String _kSettingsKey = 'sw_pricing_settings_v4';
-  static const String _kClientsKey = 'sw_clients_records_v4';
+  static const String _kSectorsKey = 'hafez_sw_sectors_v5';
+  static const String _kGlassesKey = 'hafez_sw_glasses_v5';
+  static const String _kSettingsKey = 'hafez_sw_pricing_settings_v5';
+  static const String _kClientsKey = 'hafez_sw_clients_records_v5';
 
   List<SectorProfile> sectors = [];
   List<GlassTypeItem> glassTypes = [];
@@ -19,7 +19,6 @@ class WorkshopStorage extends ChangeNotifier {
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // 1. تحميل القطاعات
     final String? sectorsRaw = prefs.getString(_kSectorsKey);
     if (sectorsRaw != null && sectorsRaw.isNotEmpty) {
       try {
@@ -28,13 +27,12 @@ class WorkshopStorage extends ChangeNotifier {
             .map((e) => SectorProfile.fromJson(Map<String, dynamic>.from(e)))
             .toList();
       } catch (_) {
-        sectors = _defaultSectors();
+        sectors = _allStandardSectors();
       }
     } else {
-      sectors = _defaultSectors();
+      sectors = _allStandardSectors();
     }
 
-    // 2. تحميل أنواع الزجاج
     final String? glassesRaw = prefs.getString(_kGlassesKey);
     if (glassesRaw != null && glassesRaw.isNotEmpty) {
       try {
@@ -49,7 +47,6 @@ class WorkshopStorage extends ChangeNotifier {
       glassTypes = _defaultGlassTypes();
     }
 
-    // 3. تحميل إعدادات التسعير الخارجية
     final String? settingsRaw = prefs.getString(_kSettingsKey);
     if (settingsRaw != null && settingsRaw.isNotEmpty) {
       try {
@@ -60,7 +57,6 @@ class WorkshopStorage extends ChangeNotifier {
       }
     }
 
-    // 4. تحميل سجل العملاء
     final String? clientsRaw = prefs.getString(_kClientsKey);
     if (clientsRaw != null && clientsRaw.isNotEmpty) {
       try {
@@ -96,13 +92,12 @@ class WorkshopStorage extends ChangeNotifier {
     return sectors.isNotEmpty ? sectors.first : null;
   }
 
-  // إدارة القطاعات (إضافة / تعديل / حذف)
   Future<void> addOrUpdateSector(SectorProfile sector) async {
     final idx = sectors.indexWhere((e) => e.id == sector.id);
     if (idx >= 0) {
       sectors[idx] = sector;
     } else {
-      sectors.add(sector);
+      sectors.insert(0, sector);
     }
     await _saveAll();
   }
@@ -120,7 +115,6 @@ class WorkshopStorage extends ChangeNotifier {
     }
   }
 
-  // إدارة أنواع الزجاج والتسعير الخارجي
   Future<void> addOrUpdateGlassType(GlassTypeItem item) async {
     final idx = glassTypes.indexWhere((e) => e.id == item.id);
     if (idx >= 0) {
@@ -141,7 +135,6 @@ class WorkshopStorage extends ChangeNotifier {
     await _saveAll();
   }
 
-  // إدارة سجل العملاء (إضافة / تعديل / حذف)
   Future<void> saveClientRecord(ClientRecord record) async {
     final idx = clients.indexWhere((e) => e.id == record.id);
     if (idx >= 0) {
@@ -157,7 +150,6 @@ class WorkshopStorage extends ChangeNotifier {
     await _saveAll();
   }
 
-  /// خوارزمية تقسيم الأعواد القياسية (1D First-Fit Decreasing)
   static List<BarCutPlan> optimize1DBars({
     required List<double> requiredPiecesCm,
     double stockLengthCm = 600.0,
@@ -205,332 +197,144 @@ class WorkshopStorage extends ChangeNotifier {
     return plans;
   }
 
-  List<SectorProfile> _defaultSectors() {
+  /// جميع قطاعات تطبيق الورشة الذكية الأصلية (الـ 25 قطاعاً بجميع الشركات + قطاعات uPVC والمطابخ)
+  List<SectorProfile> _allStandardSectors() {
     return [
+      // 1. قطاعات الشارقة / مركز الماكينات (sh)
+      _createSlidingSector('sec_jumbo_100', 'جامبو 100 جرار (Jumbo 100)', 'الشارقة / الماكينات', 2650, 11.4, 11.4, 1.5, -8.2),
+      _createSlidingSector('sec_tango_60', 'تانجو 60 جرار (Tango 60)', 'الشارقة / الماكينات', 2350, 10.2, 10.2, 1.2, -7.5),
+      _createSlidingSector('sec_tendu_120', 'تندو 120 جرار (TenDu 120)', 'الشارقة / الماكينات', 2850, 12.0, 12.0, 1.8, -9.0),
+      _createSlidingSector('sec_tembo_84', 'تيمبو 84 جرار (TemBo 84)', 'الشارقة / الماكينات', 2450, 10.5, 10.5, 1.4, -8.0),
+      _createHingedSector('sec_sonata_45', 'سوناتا 45 مفصلي (Sonata 45)', 'الشارقة / الماكينات', 2400, 9.5, 9.5, -4.8, -4.8),
+      _createSlidingSector('sec_nano_50', 'نانو 50 جرار اقتصادي (Nano 50)', 'الشارقة / الماكينات', 2100, 9.2, 9.2, 1.0, -6.8),
+
+      // 2. قطاعات السعد / الـ PS
+      _createSlidingSector('sec_ps_9600', 'قطاع PS 9600 جرار كبير', 'السعد / PS', 2300, 10.6, 10.6, -0.5, -6.5),
+      _createSlidingSector('sec_ps_6600', 'قطاع PS 6600 جرار صغير', 'السعد / PS', 1950, 8.8, 8.8, -0.4, -5.8),
+      _createHingedSector('sec_ps_5600', 'قطاع PS 5600 مفصلي كبير', 'السعد / PS', 2350, 10.0, 10.0, -4.5, -4.5),
+      _createHingedSector('sec_ps_4800', 'قطاع PS 4800 مفصلي صغير', 'السعد / PS', 1900, 8.5, 8.5, -4.0, -4.0),
+
+      // 3. قطاعات الدولية 21 — ماكسيم (maxim)
+      _createSlidingSector('sec_maxim_e777', 'ماكسيم e777 جرار عريض', 'الدولية 21 ماكسيم', 2700, 11.5, 11.5, 1.6, -8.5),
+      _createSlidingSector('sec_maxim_e105', 'ماكسيم e105 جرار خفيف', 'الدولية 21 ماكسيم', 2400, 10.4, 10.4, 1.2, -7.8),
+      _createHingedSector('sec_maxim_e47', 'ماكسيم e47 مفصلي كبير', 'الدولية 21 ماكسيم', 2500, 9.8, 9.8, -4.6, -4.6),
+      _createHingedSector('sec_maxim_e37', 'ماكسيم e37 مفصلي صغير', 'الدولية 21 ماكسيم', 2150, 8.6, 8.6, -4.0, -4.0),
+
+      // 4. قطاعات ألوميل (AluMil)
+      _createSlidingSector('sec_alumil_m9200', 'ألوميل M9200 جرار عازل', 'ألوميل AluMil', 3400, 12.5, 12.5, 2.0, -9.5),
+      _createSlidingSector('sec_alumil_m12000', 'ألوميل M12000 جرار جامبو', 'ألوميل AluMil', 3600, 13.0, 13.0, 2.2, -10.0),
+      _createSlidingSector('sec_alumil_m900', 'ألوميل M900 جرار اقتصادي', 'ألوميل AluMil', 2900, 10.8, 10.8, 1.4, -8.0),
+      _createHingedSector('sec_alumil_m9400', 'ألوميل M9400 مفصلي', 'ألوميل AluMil', 3200, 11.0, 11.0, -5.2, -5.2),
+      _createHingedSector('sec_alumil_m940', 'ألوميل M940 مفصلي خفيف', 'ألوميل AluMil', 2800, 9.6, 9.6, -4.5, -4.5),
+
+      // 5. قطاعات فولكانو (Volcano)
+      _createSlidingSector('sec_volcano_v120', 'فولكانو V120 جرار ثقيل', 'فولكانو Volcano', 3100, 12.0, 12.0, 1.8, -9.0),
+      _createSlidingSector('sec_volcano_v70', 'فولكانو V70 جرار وسط', 'فولكانو Volcano', 2600, 10.5, 10.5, 1.4, -7.8),
+      _createHingedSector('sec_volcano_v44', 'فولكانو V44 مفصلي', 'فولكانو Volcano', 2700, 10.0, 10.0, -4.8, -4.8),
+
+      // 6. قطاعات فالف — القباري (valve)
+      _createSlidingSector('sec_valve_v170', 'فالف V170 جرار بانوراما', 'فالف القباري', 3300, 12.8, 12.8, 2.0, -9.8),
+      _createSlidingSector('sec_valve_v140', 'فالف V140 جرار وسط', 'فالف القباري', 2800, 11.2, 11.2, 1.5, -8.4),
+      _createHingedSector('sec_valve_mv100', 'فالف MV100 مفصلي عازل', 'فالف القباري', 2950, 10.5, 10.5, -5.0, -5.0),
+
+      // 7. قطاعات uPVC التركية والمصرية
+      _createSlidingSector('sec_upvc_sliding', 'قطاع uPVC جرار عازل صوت وحرارة', 'قطاعات uPVC', 3200, 13.5, 13.5, 2.0, -10.2),
+      _createHingedSector('sec_upvc_hinged', 'قطاع uPVC مفصلي عازل (كاوتش مزدوج)', 'قطاعات uPVC', 3400, 12.0, 12.0, -5.5, -5.5),
+
+      // 8. قطاعات المطابخ الألومنيوم
       SectorProfile(
-        id: 'sec_jumbo_100',
-        name: 'قطاع جامبو 100 جرار (Jumbo 100)',
-        category: 'جرار',
+        id: 'sec_kitchen_1040',
+        name: 'مطابخ ألومنيوم قطاع 10×40 (علب شاسيه)',
+        companyGroup: 'مطابخ ألومنيوم',
+        systemType: 'مطبخ',
         defaultSashCount: 2,
-        pricePerSquareMeter: 2650.0,
-        glassWidthDeductCm: 11.4,
-        glassHeightDeductCm: 11.4,
+        pricePerSquareMeter: 3800.0,
+        glassWidthDeductCm: 6.0,
+        glassHeightDeductCm: 6.0,
         parts: [
-          SectorPart(
-            id: 'p1',
-            name: 'حلق جامبو علوي وسفلي',
-            role: 'حلق',
-            dimensionBasis: 'width',
-            offsetCm: 0.0,
-            quantityPerWindow: 2,
-          ),
-          SectorPart(
-            id: 'p2',
-            name: 'حلق جامبو جنبين',
-            role: 'حلق',
-            dimensionBasis: 'height',
-            offsetCm: 0.0,
-            quantityPerWindow: 2,
-          ),
-          SectorPart(
-            id: 'p3',
-            name: 'رأس وكعب ضلفة جامبو',
-            role: 'ضلفة',
-            dimensionBasis: 'width_per_sash',
-            offsetCm: 1.5,
-            quantityPerWindow: 2,
-            multiplyBySashes: true,
-          ),
-          SectorPart(
-            id: 'p4',
-            name: 'قائم ضلفة جامبو',
-            role: 'ضلفة',
-            dimensionBasis: 'height',
-            offsetCm: -8.2,
-            quantityPerWindow: 2,
-            multiplyBySashes: true,
-          ),
-          SectorPart(
-            id: 'p5',
-            name: 'سكينة تداخل جامبو',
-            role: 'سكينة',
-            dimensionBasis: 'height',
-            offsetCm: -8.2,
-            quantityPerWindow: 2,
-            multiplyBySashes: false,
-          ),
-          SectorPart(
-            id: 'p6',
-            name: 'ضلفة سلك (عرض)',
-            role: 'منخل',
-            dimensionBasis: 'width_per_sash',
-            offsetCm: 1.5,
-            quantityPerWindow: 2,
-            multiplyBySashes: false,
-          ),
-          SectorPart(
-            id: 'p7',
-            name: 'ضلفة سلك (ارتفاع)',
-            role: 'منخل',
-            dimensionBasis: 'height',
-            offsetCm: -6.5,
-            quantityPerWindow: 2,
-            multiplyBySashes: false,
-          ),
+          SectorPart(id: 'kp1', name: 'علبة شاسيه رئيسية (عرض)', role: 'حلق', dimensionBasis: 'width', offsetCm: 0.0, quantityPerWindow: 2),
+          SectorPart(id: 'kp2', name: 'علبة شاسيه قائمة (عمق/ارتفاع)', role: 'حلق', dimensionBasis: 'height', offsetCm: 0.0, quantityPerWindow: 4),
+          SectorPart(id: 'kp3', name: 'ضلفة مطبخ فايبر/كلادينج (عرض)', role: 'ضلفة', dimensionBasis: 'width_per_sash', offsetCm: -0.3, quantityPerWindow: 2, multiplyBySashes: true),
+          SectorPart(id: 'kp4', name: 'ضلفة مطبخ فايبر/كلادينج (ارتفاع)', role: 'ضلفة', dimensionBasis: 'height', offsetCm: -0.3, quantityPerWindow: 2, multiplyBySashes: true),
+          SectorPart(id: 'kp5', name: 'قاطع رف ألومنيوم 2.5×2.5', role: 'مكمل', dimensionBasis: 'width', offsetCm: -8.0, quantityPerWindow: 2),
+          SectorPart(id: 'kp6', name: 'مقبض بلت إن (مقطع مقبض)', role: 'إضافي', dimensionBasis: 'width_per_sash', offsetCm: -0.3, quantityPerWindow: 1, multiplyBySashes: true),
         ],
       ),
       SectorProfile(
-        id: 'sec_tango_60',
-        name: 'قطاع تانجو 60 جرار (Tango 60)',
-        category: 'جرار',
+        id: 'sec_kitchen_25',
+        name: 'مطابخ ألومنيوم قطاع 2.5×2.5 (كلاسيك)',
+        companyGroup: 'مطابخ ألومنيوم',
+        systemType: 'مطبخ',
         defaultSashCount: 2,
-        pricePerSquareMeter: 2350.0,
-        glassWidthDeductCm: 10.2,
-        glassHeightDeductCm: 10.2,
+        pricePerSquareMeter: 3200.0,
+        glassWidthDeductCm: 5.0,
+        glassHeightDeductCm: 5.0,
         parts: [
-          SectorPart(
-            id: 't1',
-            name: 'حلق تانجو علوي وسفلي',
-            role: 'حلق',
-            dimensionBasis: 'width',
-            offsetCm: 0.0,
-            quantityPerWindow: 2,
-          ),
-          SectorPart(
-            id: 't2',
-            name: 'حلق تانجو جنبين',
-            role: 'حلق',
-            dimensionBasis: 'height',
-            offsetCm: 0.0,
-            quantityPerWindow: 2,
-          ),
-          SectorPart(
-            id: 't3',
-            name: 'رأس وكعب ضلفة تانجو',
-            role: 'ضلفة',
-            dimensionBasis: 'width_per_sash',
-            offsetCm: 1.2,
-            quantityPerWindow: 2,
-            multiplyBySashes: true,
-          ),
-          SectorPart(
-            id: 't4',
-            name: 'قائم ضلفة تانجو',
-            role: 'ضلفة',
-            dimensionBasis: 'height',
-            offsetCm: -7.5,
-            quantityPerWindow: 2,
-            multiplyBySashes: true,
-          ),
-          SectorPart(
-            id: 't5',
-            name: 'سكينة تانجو',
-            role: 'سكينة',
-            dimensionBasis: 'height',
-            offsetCm: -7.5,
-            quantityPerWindow: 2,
-          ),
-        ],
-      ),
-      SectorProfile(
-        id: 'sec_ps_9600',
-        name: 'قطاع PS 9600 جرار كبير',
-        category: 'جرار',
-        defaultSashCount: 2,
-        pricePerSquareMeter: 2250.0,
-        glassWidthDeductCm: 10.6,
-        glassHeightDeductCm: 10.6,
-        parts: [
-          SectorPart(
-            id: 'ps1',
-            name: 'حلق PS كبير (عرض)',
-            role: 'حلق',
-            dimensionBasis: 'width',
-            offsetCm: 0.0,
-            quantityPerWindow: 2,
-          ),
-          SectorPart(
-            id: 'ps2',
-            name: 'حلق PS كبير (ارتفاع)',
-            role: 'حلق',
-            dimensionBasis: 'height',
-            offsetCm: 0.0,
-            quantityPerWindow: 2,
-          ),
-          SectorPart(
-            id: 'ps3',
-            name: 'عرض ضلفة PS كبير',
-            role: 'ضلفة',
-            dimensionBasis: 'width_per_sash',
-            offsetCm: -0.5,
-            quantityPerWindow: 2,
-            multiplyBySashes: true,
-          ),
-          SectorPart(
-            id: 'ps4',
-            name: 'ارتفاع ضلفة PS كبير',
-            role: 'ضلفة',
-            dimensionBasis: 'height',
-            offsetCm: -6.5,
-            quantityPerWindow: 2,
-            multiplyBySashes: true,
-          ),
-          SectorPart(
-            id: 'ps5',
-            name: 'سكينة PS كبير',
-            role: 'سكينة',
-            dimensionBasis: 'height',
-            offsetCm: -6.5,
-            quantityPerWindow: 2,
-          ),
-        ],
-      ),
-      SectorProfile(
-        id: 'sec_ps_6600',
-        name: 'قطاع PS 6600 جرار صغير',
-        category: 'جرار',
-        defaultSashCount: 2,
-        pricePerSquareMeter: 1950.0,
-        glassWidthDeductCm: 8.8,
-        glassHeightDeductCm: 8.8,
-        parts: [
-          SectorPart(
-            id: 'pss1',
-            name: 'حلق PS صغير (عرض)',
-            role: 'حلق',
-            dimensionBasis: 'width',
-            offsetCm: 0.0,
-            quantityPerWindow: 2,
-          ),
-          SectorPart(
-            id: 'pss2',
-            name: 'حلق PS صغير (ارتفاع)',
-            role: 'حلق',
-            dimensionBasis: 'height',
-            offsetCm: 0.0,
-            quantityPerWindow: 2,
-          ),
-          SectorPart(
-            id: 'pss3',
-            name: 'عرض ضلفة PS صغير',
-            role: 'ضلفة',
-            dimensionBasis: 'width_per_sash',
-            offsetCm: -0.4,
-            quantityPerWindow: 2,
-            multiplyBySashes: true,
-          ),
-          SectorPart(
-            id: 'pss4',
-            name: 'ارتفاع ضلفة PS صغير',
-            role: 'ضلفة',
-            dimensionBasis: 'height',
-            offsetCm: -5.8,
-            quantityPerWindow: 2,
-            multiplyBySashes: true,
-          ),
-          SectorPart(
-            id: 'pss5',
-            name: 'سكينة PS صغير',
-            role: 'سكينة',
-            dimensionBasis: 'height',
-            offsetCm: -5.8,
-            quantityPerWindow: 2,
-          ),
-        ],
-      ),
-      SectorProfile(
-        id: 'sec_sonata_45',
-        name: 'قطاع سوناتا 45 مفصلي (Sonata 45)',
-        category: 'مفصلي',
-        defaultSashCount: 1,
-        pricePerSquareMeter: 2400.0,
-        glassWidthDeductCm: 9.5,
-        glassHeightDeductCm: 9.5,
-        parts: [
-          SectorPart(
-            id: 'sn1',
-            name: 'حلق سوناتا (عرض)',
-            role: 'حلق',
-            dimensionBasis: 'width',
-            offsetCm: 0.0,
-            quantityPerWindow: 2,
-          ),
-          SectorPart(
-            id: 'sn2',
-            name: 'حلق سوناتا (ارتفاع)',
-            role: 'حلق',
-            dimensionBasis: 'height',
-            offsetCm: 0.0,
-            quantityPerWindow: 2,
-          ),
-          SectorPart(
-            id: 'sn3',
-            name: 'ضلفة سوناتا (عرض)',
-            role: 'ضلفة',
-            dimensionBasis: 'width_per_sash',
-            offsetCm: -4.8,
-            quantityPerWindow: 2,
-            multiplyBySashes: true,
-          ),
-          SectorPart(
-            id: 'sn4',
-            name: 'ضلفة سوناتا (ارتفاع)',
-            role: 'ضلفة',
-            dimensionBasis: 'height',
-            offsetCm: -4.8,
-            quantityPerWindow: 2,
-            multiplyBySashes: true,
-          ),
-          SectorPart(
-            id: 'sn5',
-            name: 'باكتة زجاج سوناتا (عرض)',
-            role: 'إضافي',
-            dimensionBasis: 'width_per_sash',
-            offsetCm: -14.0,
-            quantityPerWindow: 2,
-            multiplyBySashes: true,
-          ),
-          SectorPart(
-            id: 'sn6',
-            name: 'باكتة زجاج سوناتا (ارتفاع)',
-            role: 'إضافي',
-            dimensionBasis: 'height',
-            offsetCm: -14.0,
-            quantityPerWindow: 2,
-            multiplyBySashes: true,
-          ),
+          SectorPart(id: 'k25_1', name: 'علبة 2.5×2.5 (عرض الوحدة)', role: 'حلق', dimensionBasis: 'width', offsetCm: 0.0, quantityPerWindow: 4),
+          SectorPart(id: 'k25_2', name: 'علبة 2.5×2.5 (ارتفاع الوحدة)', role: 'حلق', dimensionBasis: 'height', offsetCm: 0.0, quantityPerWindow: 4),
+          SectorPart(id: 'k25_3', name: 'ضلفة مطبخ شطف 45 درجة (عرض)', role: 'ضلفة', dimensionBasis: 'width_per_sash', offsetCm: -0.4, quantityPerWindow: 2, multiplyBySashes: true),
+          SectorPart(id: 'k25_4', name: 'ضلفة مطبخ شطف 45 درجة (ارتفاع)', role: 'ضلفة', dimensionBasis: 'height', offsetCm: -0.4, quantityPerWindow: 2, multiplyBySashes: true),
         ],
       ),
     ];
   }
 
+  static SectorProfile _createSlidingSector(
+      String id, String name, String group, double price, double gW, double gH, double sashWOff, double sashHOff) {
+    return SectorProfile(
+      id: id,
+      name: name,
+      companyGroup: group,
+      systemType: 'شباك جرار',
+      defaultSashCount: 2,
+      pricePerSquareMeter: price,
+      glassWidthDeductCm: gW,
+      glassHeightDeductCm: gH,
+      parts: [
+        SectorPart(id: '${id}_p1', name: 'حلق علوي وسفلي (عرض)', role: 'حلق', dimensionBasis: 'width', offsetCm: 0.0, quantityPerWindow: 2),
+        SectorPart(id: '${id}_p2', name: 'حلق جنبين (ارتفاع)', role: 'حلق', dimensionBasis: 'height', offsetCm: 0.0, quantityPerWindow: 2),
+        SectorPart(id: '${id}_p3', name: 'رأس وكعب ضلفة (عرض)', role: 'ضلفة', dimensionBasis: 'width_per_sash', offsetCm: sashWOff, quantityPerWindow: 2, multiplyBySashes: true),
+        SectorPart(id: '${id}_p4', name: 'قائم ضلفة (ارتفاع)', role: 'ضلفة', dimensionBasis: 'height', offsetCm: sashHOff, quantityPerWindow: 2, multiplyBySashes: true),
+        SectorPart(id: '${id}_p5', name: 'سكينة تداخل', role: 'سكينة', dimensionBasis: 'height', offsetCm: sashHOff, quantityPerWindow: 2),
+        SectorPart(id: '${id}_p6', name: 'ضلفة منخل سلك (عرض)', role: 'منخل', dimensionBasis: 'width_per_sash', offsetCm: sashWOff, quantityPerWindow: 2),
+        SectorPart(id: '${id}_p7', name: 'ضلفة منخل سلك (ارتفاع)', role: 'منخل', dimensionBasis: 'height', offsetCm: sashHOff + 1.5, quantityPerWindow: 2),
+        SectorPart(id: '${id}_p8', name: 'مكمل / تقابل بار إضافي', role: 'مكمل', dimensionBasis: 'height', offsetCm: 0.0, quantityPerWindow: 1),
+      ],
+    );
+  }
+
+  static SectorProfile _createHingedSector(
+      String id, String name, String group, double price, double gW, double gH, double sashWOff, double sashHOff) {
+    return SectorProfile(
+      id: id,
+      name: name,
+      companyGroup: group,
+      systemType: 'شباك مفصلي',
+      defaultSashCount: 1,
+      pricePerSquareMeter: price,
+      glassWidthDeductCm: gW,
+      glassHeightDeductCm: gH,
+      parts: [
+        SectorPart(id: '${id}_p1', name: 'حلق مفصلي (عرض)', role: 'حلق', dimensionBasis: 'width', offsetCm: 0.0, quantityPerWindow: 2),
+        SectorPart(id: '${id}_p2', name: 'حلق مفصلي (ارتفاع)', role: 'حلق', dimensionBasis: 'height', offsetCm: 0.0, quantityPerWindow: 2),
+        SectorPart(id: '${id}_p3', name: 'ضلفة مفصلي (عرض)', role: 'ضلفة', dimensionBasis: 'width_per_sash', offsetCm: sashWOff, quantityPerWindow: 2, multiplyBySashes: true),
+        SectorPart(id: '${id}_p4', name: 'ضلفة مفصلي (ارتفاع)', role: 'ضلفة', dimensionBasis: 'height', offsetCm: sashHOff, quantityPerWindow: 2, multiplyBySashes: true),
+        SectorPart(id: '${id}_p5', name: 'باكتة زجاج (عرض)', role: 'إضافي', dimensionBasis: 'width_per_sash', offsetCm: sashWOff - 9.0, quantityPerWindow: 2, multiplyBySashes: true),
+        SectorPart(id: '${id}_p6', name: 'باكتة زجاج (ارتفاع)', role: 'إضافي', dimensionBasis: 'height', offsetCm: sashHOff - 9.0, quantityPerWindow: 2, multiplyBySashes: true),
+        SectorPart(id: '${id}_p7', name: 'تقابل / مكمل ضلفتين', role: 'تقابل', dimensionBasis: 'height', offsetCm: sashHOff, quantityPerWindow: 1),
+      ],
+    );
+  }
+
   List<GlassTypeItem> _defaultGlassTypes() {
     return [
-      GlassTypeItem(
-        id: 'g_clear_6',
-        name: 'زجاج شفاف 6 مم',
-        pricePerSquareMeter: 450.0,
-      ),
-      GlassTypeItem(
-        id: 'g_reflective_6',
-        name: 'زجاج عاكس (أزرق / بني / عسلي) 6 مم',
-        pricePerSquareMeter: 600.0,
-      ),
-      GlassTypeItem(
-        id: 'g_frosted_6',
-        name: 'زجاج مصنفر / كريستال 6 مم',
-        pricePerSquareMeter: 520.0,
-      ),
-      GlassTypeItem(
-        id: 'g_tempered_10',
-        name: 'زجاج سيكوريت 10 مم',
-        pricePerSquareMeter: 1150.0,
-      ),
-      GlassTypeItem(
-        id: 'g_clear_4',
-        name: 'زجاج شفاف 4 مم',
-        pricePerSquareMeter: 340.0,
-      ),
+      GlassTypeItem(id: 'g_clear_6', name: 'زجاج شفاف 6 مم', pricePerSquareMeter: 450.0),
+      GlassTypeItem(id: 'g_reflective_6_brown', name: 'زجاج عاكس بني 6 مم', pricePerSquareMeter: 600.0),
+      GlassTypeItem(id: 'g_reflective_6_blue', name: 'زجاج عاكس أزرق 6 مم', pricePerSquareMeter: 620.0),
+      GlassTypeItem(id: 'g_reflective_6_honey', name: 'زجاج عاكس عسلي 6 مم', pricePerSquareMeter: 600.0),
+      GlassTypeItem(id: 'g_frosted_6', name: 'زجاج مصنفر / كريستال 6 مم', pricePerSquareMeter: 530.0),
+      GlassTypeItem(id: 'g_tempered_10', name: 'زجاج سيكوريت 10 مم (واجهات وأبواب)', pricePerSquareMeter: 1200.0),
+      GlassTypeItem(id: 'g_clear_4', name: 'زجاج شفاف 4 مم', pricePerSquareMeter: 350.0),
     ];
   }
 }

@@ -1,5 +1,5 @@
 name: smart_workshop
-description: تطبيق الورشة الذكية المخصص لإدارة القطاعات والتخصيمات وتقسيم الأعواد وعروض الأسعار (بدون إعلانات)
+description: شركة الحافظ للمطابخ الألومنيوم والخشب وجميع أعمال الأخشاب والواجهات الزجاجية
 publish_to: 'none'
 version: 4.0.0+120
 
@@ -17,6 +17,7 @@ dependencies:
   pdf: ^3.11.0
   printing: ^5.13.1
   share_plus: ^9.0.0
+  http: ^1.2.1
   intl: any
 
 dev_dependencies:

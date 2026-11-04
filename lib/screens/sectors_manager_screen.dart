@@ -13,6 +13,8 @@ class SectorsManagerScreen extends StatefulWidget {
 }
 
 class _SectorsManagerScreenState extends State<SectorsManagerScreen> {
+  String _selectedGroupFilter = 'الكل';
+
   void _openSectorEditor({SectorProfile? existing}) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -26,110 +28,143 @@ class _SectorsManagerScreenState extends State<SectorsManagerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final sectors = widget.storage.sectors;
+    final allSectors = widget.storage.sectors;
+    final groups = ['الكل', ...allSectors.map((e) => e.companyGroup).toSet()];
+
+    final filtered = _selectedGroupFilter == 'الكل'
+        ? allSectors
+        : allSectors.where((s) => s.companyGroup == _selectedGroupFilter).toList();
+
     return Scaffold(
       body: Column(
         children: [
+          // شريط معلومات وإضافة قطاع مخصص
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            color: const Color(0xFFFEF2F2),
+            padding: const EdgeInsets.all(12),
+            decoration: const BoxDecoration(
+              color: Color(0xFF1B110A),
+              border: Border(bottom: BorderSide(color: Color(0xFFD97706), width: 1.5)),
+            ),
             child: Row(
               children: [
-                const Icon(Icons.design_services, color: Color(0xFF991B1B)),
+                const Icon(Icons.design_services, color: Color(0xFFF59E0B)),
                 const SizedBox(width: 10),
                 const Expanded(
                   child: Text(
-                    'أضف أي قطاع جديد بالاسم والصورة وحدد أجزاءه (حلق، ضلفة، سكينة، أو أي جزء إضافي) وعدد القطع في الشباك ليظهر في المعاينة وفي قائمة القطاعات.',
-                    style: TextStyle(fontSize: 12.5, color: Color(0xFF7F1D1D)),
+                    'أضف أي قطاع جديد بالاسم والصورة وأضف أي مسمى تريده (سكينة، مكمل، تقابل، باكتة، محبس، إلخ) مع تحديد العدد والمعادلة.',
+                    style: TextStyle(fontSize: 12, color: Colors.white),
                   ),
                 ),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF15803D),
+                    backgroundColor: const Color(0xFFD97706),
                     foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                   onPressed: () => _openSectorEditor(),
-                  icon: const Icon(Icons.add_circle_outline, size: 18),
-                  label: const Text('إضافة قطاع جديد'),
+                  icon: const Icon(Icons.add_circle, size: 18),
+                  label: const Text('إضافة قطاع جديد', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
           ),
+
+          // شريط فلترة الشركات والقطاعات (الـ 25 قطاعاً الأصليين + المضافين)
+          SizedBox(
+            height: 48,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              itemCount: groups.length,
+              itemBuilder: (ctx, idx) {
+                final grp = groups[idx];
+                final isSel = grp == _selectedGroupFilter;
+                return Padding(
+                  padding: const EdgeInsets.only(left: 6),
+                  child: FilterChip(
+                    label: Text(grp),
+                    selected: isSel,
+                    selectedColor: const Color(0xFFD97706),
+                    labelStyle: TextStyle(
+                      color: isSel ? Colors.white : Colors.black87,
+                      fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+                      fontSize: 12,
+                    ),
+                    onSelected: (_) => setState(() => _selectedGroupFilter = grp),
+                  ),
+                );
+              },
+            ),
+          ),
+
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.all(12),
-              itemCount: sectors.length,
+              itemCount: filtered.length,
               itemBuilder: (context, index) {
-                final sec = sectors[index];
+                final sec = filtered[index];
                 return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
+                  margin: const EdgeInsets.only(bottom: 10),
                   elevation: 2,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(
-                      color: sec.isCustom
-                          ? const Color(0xFF15803D)
-                          : Colors.grey.shade300,
-                      width: sec.isCustom ? 1.5 : 1.0,
+                      color: sec.isCustom ? const Color(0xFFD97706) : Colors.grey.shade300,
+                      width: sec.isCustom ? 1.6 : 1.0,
                     ),
                   ),
                   child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 8),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     leading: _buildSectorAvatar(sec),
                     title: Row(
                       children: [
                         Expanded(
                           child: Text(
                             sec.name,
-                            style: const TextStyle(
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: sec.isCustom ? const Color(0xFFFEF3C7) : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                                color: sec.isCustom ? const Color(0xFFD97706) : Colors.grey.shade400),
+                          ),
+                          child: Text(
+                            sec.companyGroup,
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              color: sec.isCustom ? const Color(0xFFB45309) : const Color(0xFF334155),
                               fontWeight: FontWeight.bold,
-                              fontSize: 15,
                             ),
                           ),
                         ),
-                        if (sec.isCustom)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFDCFCE7),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              'قطاع مضاف',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Color(0xFF15803D),
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
                       ],
                     ),
                     subtitle: Padding(
-                      padding: const EdgeInsets.only(top: 6),
+                      padding: const EdgeInsets.only(top: 4),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'الفئة: ${sec.category} (${sec.defaultSashCount} ضلفة) • سعر المتر: ${sec.pricePerSquareMeter.toStringAsFixed(0)} ج.م/م²',
-                            style: const TextStyle(
-                                fontSize: 12.5, color: Color(0xFF334155)),
+                            'النوع: ${sec.systemType} (${sec.defaultSashCount} ضلفة) • سعر المتر: ${sec.pricePerSquareMeter.toStringAsFixed(0)} ج.م/م²',
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
                           ),
                           const SizedBox(height: 4),
                           Wrap(
-                            spacing: 6,
+                            spacing: 5,
                             runSpacing: 4,
                             children: sec.parts
                                 .map((p) => Chip(
                                       visualDensity: VisualDensity.compact,
-                                      labelPadding: const EdgeInsets.symmetric(
-                                          horizontal: 4),
+                                      labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+                                      backgroundColor: const Color(0xFFF8FAFC),
                                       label: Text(
-                                        '${p.name} (العدد: ${p.quantityPerWindow}${p.multiplyBySashes ? "×الضلف" : ""})',
-                                        style: const TextStyle(fontSize: 11),
+                                        '${p.name} (عدد: ${p.quantityPerWindow}${p.multiplyBySashes ? "×ضلف" : ""})',
+                                        style: const TextStyle(fontSize: 10.5),
                                       ),
                                     ))
                                 .toList(),
@@ -141,42 +176,38 @@ class _SectorsManagerScreenState extends State<SectorsManagerScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          tooltip: 'تعديل ومعاينة القطاع',
+                          tooltip: 'تعديل ومعاينة القطاع والأجزاء',
                           icon: const Icon(Icons.edit, color: Color(0xFF1D4ED8)),
                           onPressed: () => _openSectorEditor(existing: sec),
                         ),
-                        IconButton(
-                          tooltip: 'حذف القطاع',
-                          icon:
-                              const Icon(Icons.delete_outline, color: Colors.red),
-                          onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: const Text('تأكيد الحذف'),
-                                content: Text(
-                                    'هل تريد حذف القطاع "${sec.name}" من قائمة القطاعات؟'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(ctx, false),
-                                    child: const Text('إلغاء'),
-                                  ),
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red),
-                                    onPressed: () =>
-                                        Navigator.pop(ctx, true),
-                                    child: const Text('حذف'),
-                                  ),
-                                ],
-                              ),
-                            );
-                            if (confirm == true) {
-                              await widget.storage.deleteSector(sec.id);
-                            }
-                          },
-                        ),
+                        if (sec.isCustom)
+                          IconButton(
+                            tooltip: 'حذف القطاع',
+                            icon: const Icon(Icons.delete_outline, color: Colors.red),
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('تأكيد الحذف'),
+                                  content: Text('هل تريد حذف القطاع المخصص "${sec.name}"؟'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, false),
+                                      child: const Text('إلغاء'),
+                                    ),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                      onPressed: () => Navigator.pop(ctx, true),
+                                      child: const Text('حذف'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirm == true) {
+                                await widget.storage.deleteSector(sec.id);
+                              }
+                            },
+                          ),
                       ],
                     ),
                   ),
@@ -194,29 +225,29 @@ class _SectorsManagerScreenState extends State<SectorsManagerScreen> {
         sec.imagePath!.isNotEmpty &&
         File(sec.imagePath!).existsSync()) {
       return ClipRRect(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         child: Image.file(
           File(sec.imagePath!),
-          width: 56,
-          height: 56,
+          width: 50,
+          height: 50,
           fit: BoxFit.cover,
         ),
       );
     }
     return Container(
-      width: 56,
-      height: 56,
+      width: 50,
+      height: 50,
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFCBD5E1)),
+        color: const Color(0xFFFEF3C7),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFD97706)),
       ),
-      child: const Icon(Icons.window, color: Color(0xFF991B1B), size: 30),
+      child: const Icon(Icons.window, color: Color(0xFFB45309), size: 28),
     );
   }
 }
 
-/// شاشة إضافة / تعديل قطاع كامل مع رفع الصورة وإضافة الأجزاء وشاشة المعاينة الفورية
+/// صفحة إضافة / تعديل القطاع وإضافة أي أجزاء حرة (سكينة، مكمل، تقابل، وغيرها)
 class SectorEditorPage extends StatefulWidget {
   final WorkshopStorage storage;
   final SectorProfile? existingSector;
@@ -233,16 +264,16 @@ class SectorEditorPage extends StatefulWidget {
 
 class _SectorEditorPageState extends State<SectorEditorPage> {
   final _nameCtrl = TextEditingController();
+  final _companyCtrl = TextEditingController();
   final _priceCtrl = TextEditingController();
   final _glassWDeductCtrl = TextEditingController();
   final _glassHDeductCtrl = TextEditingController();
 
-  // حقول المعاينة الفورية
   final _previewWCtrl = TextEditingController(text: '150');
   final _previewHCtrl = TextEditingController(text: '120');
   int _previewSashes = 2;
 
-  String _category = 'جرار';
+  String _systemType = 'شباك جرار';
   int _defaultSashCount = 2;
   String? _imagePath;
   List<SectorPart> _parts = [];
@@ -253,10 +284,11 @@ class _SectorEditorPageState extends State<SectorEditorPage> {
     final ex = widget.existingSector;
     if (ex != null) {
       _nameCtrl.text = ex.name;
+      _companyCtrl.text = ex.companyGroup;
       _priceCtrl.text = ex.pricePerSquareMeter.toStringAsFixed(0);
       _glassWDeductCtrl.text = ex.glassWidthDeductCm.toString();
       _glassHDeductCtrl.text = ex.glassHeightDeductCm.toString();
-      _category = ex.category;
+      _systemType = ex.systemType;
       _defaultSashCount = ex.defaultSashCount;
       _previewSashes = ex.defaultSashCount;
       _imagePath = ex.imagePath;
@@ -272,54 +304,17 @@ class _SectorEditorPageState extends State<SectorEditorPage> {
               ))
           .toList();
     } else {
+      _companyCtrl.text = 'قطاع مخصص';
       _priceCtrl.text = '2400';
       _glassWDeductCtrl.text = '11.4';
       _glassHDeductCtrl.text = '11.4';
-      // أجزاء افتراضية قابلة للتعديل أو الحذف أو الإضافة عليها
       _parts = [
-        SectorPart(
-          id: 'part_1',
-          name: 'حلق (عرض علوي وسفلي)',
-          role: 'حلق',
-          dimensionBasis: 'width',
-          offsetCm: 0.0,
-          quantityPerWindow: 2,
-        ),
-        SectorPart(
-          id: 'part_2',
-          name: 'حلق (ارتفاع جنبين)',
-          role: 'حلق',
-          dimensionBasis: 'height',
-          offsetCm: 0.0,
-          quantityPerWindow: 2,
-        ),
-        SectorPart(
-          id: 'part_3',
-          name: 'ضلفة (رأس وكعب عرض)',
-          role: 'ضلفة',
-          dimensionBasis: 'width_per_sash',
-          offsetCm: 1.5,
-          quantityPerWindow: 2,
-          multiplyBySashes: true,
-        ),
-        SectorPart(
-          id: 'part_4',
-          name: 'ضلفة (قائم ارتفاع)',
-          role: 'ضلفة',
-          dimensionBasis: 'height',
-          offsetCm: -8.2,
-          quantityPerWindow: 2,
-          multiplyBySashes: true,
-        ),
-        SectorPart(
-          id: 'part_5',
-          name: 'سكينة',
-          role: 'سكينة',
-          dimensionBasis: 'height',
-          offsetCm: -8.2,
-          quantityPerWindow: 2,
-          multiplyBySashes: false,
-        ),
+        SectorPart(id: 'p1', name: 'حلق علوي وسفلي (عرض)', role: 'حلق', dimensionBasis: 'width', offsetCm: 0.0, quantityPerWindow: 2),
+        SectorPart(id: 'p2', name: 'حلق جنبين (ارتفاع)', role: 'حلق', dimensionBasis: 'height', offsetCm: 0.0, quantityPerWindow: 2),
+        SectorPart(id: 'p3', name: 'رأس وكعب ضلفة (عرض)', role: 'ضلفة', dimensionBasis: 'width_per_sash', offsetCm: 1.5, quantityPerWindow: 2, multiplyBySashes: true),
+        SectorPart(id: 'p4', name: 'قائم ضلفة (ارتفاع)', role: 'ضلفة', dimensionBasis: 'height', offsetCm: -8.2, quantityPerWindow: 2, multiplyBySashes: true),
+        SectorPart(id: 'p5', name: 'سكينة تداخل', role: 'سكينة', dimensionBasis: 'height', offsetCm: -8.2, quantityPerWindow: 2),
+        SectorPart(id: 'p6', name: 'مكمل / تقابل بار', role: 'مكمل', dimensionBasis: 'height', offsetCm: 0.0, quantityPerWindow: 1),
       ];
     }
   }
@@ -327,8 +322,7 @@ class _SectorEditorPageState extends State<SectorEditorPage> {
   Future<void> _pickImage(ImageSource source) async {
     try {
       final picker = ImagePicker();
-      final XFile? picked =
-          await picker.pickImage(source: source, imageQuality: 80);
+      final XFile? picked = await picker.pickImage(source: source, imageQuality: 80);
       if (picked != null) {
         setState(() {
           _imagePath = picked.path;
@@ -337,30 +331,30 @@ class _SectorEditorPageState extends State<SectorEditorPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر اختيار الصورة: $e')),
+        SnackBar(content: Text('تعذر تحميل الصورة: $e')),
       );
     }
   }
 
+  /// نافذة إضافة أي جزء بالمسمى الحر (سكينة، مكمل، تقابل، حلق، ضلفة، باكتة، محبس، إلخ)
   void _showPartDialog({SectorPart? existingPart, int? editIndex}) {
     final nameCtrl = TextEditingController(text: existingPart?.name ?? '');
     final offsetCtrl = TextEditingController(
         text: existingPart != null ? existingPart.offsetCm.toString() : '0.0');
     final qtyCtrl = TextEditingController(
-        text: existingPart != null
-            ? existingPart.quantityPerWindow.toString()
-            : '2');
-    String role = existingPart?.role ?? 'حلق';
-    String basis = existingPart?.dimensionBasis ?? 'width';
+        text: existingPart != null ? existingPart.quantityPerWindow.toString() : '2');
+    String role = existingPart?.role ?? 'سكينة';
+    String basis = existingPart?.dimensionBasis ?? 'height';
     bool multSashes = existingPart?.multiplyBySashes ?? false;
+
+    // اقتراحات مسميات سريعة يضغط عليها المستخدم أو يكتب مسمى من عنده
+    final quickNames = ['سكينة', 'مكمل', 'تقابل', 'حلق', 'ضلفة', 'باكتة', 'محبس', 'بار زاوية', 'منخل سلك'];
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(existingPart == null
-              ? 'إضافة جزء جديد للقطاع'
-              : 'تعديل بيانات الجزء'),
+          title: Text(existingPart == null ? 'إضافة جزء جديد للقطاع' : 'تعديل بيانات الجزء'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -369,50 +363,42 @@ class _SectorEditorPageState extends State<SectorEditorPage> {
                 TextField(
                   controller: nameCtrl,
                   decoration: const InputDecoration(
-                    labelText: 'اسم الجزء (مثلاً: حلق، ضلفة، سكينة، محبس، بار)',
+                    labelText: 'اسم الجزء (اكتب أي مسمى: سكينة، مكمل، تقابل...)',
+                    hintText: 'مثال: سكينة تداخل / بار تقابل ضلفتين / مكمل',
                     border: OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: role,
-                  decoration: const InputDecoration(
-                    labelText: 'تصنيف الجزء',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'حلق', child: Text('حلق (Frame)')),
-                    DropdownMenuItem(value: 'ضلفة', child: Text('ضلفة (Sash)')),
-                    DropdownMenuItem(
-                        value: 'سكينة', child: Text('سكينة (Adapter/Overlap)')),
-                    DropdownMenuItem(
-                        value: 'منخل', child: Text('ضلفة سلك / منخل')),
-                    DropdownMenuItem(
-                        value: 'إضافي',
-                        child: Text('جزء إضافي مخصص (بار / كاب / محبس)')),
-                  ],
-                  onChanged: (v) {
-                    if (v != null) setDialogState(() => role = v);
-                  },
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 4,
+                  children: quickNames.map((qn) => ActionChip(
+                    label: Text(qn, style: const TextStyle(fontSize: 11)),
+                    onPressed: () {
+                      setDialogState(() {
+                        nameCtrl.text = qn;
+                        role = qn;
+                        if (qn == 'حلق' || qn == 'ضلفة') {
+                          basis = 'width';
+                        } else {
+                          basis = 'height';
+                        }
+                      });
+                    },
+                  )).toList(),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: basis,
                   decoration: const InputDecoration(
-                    labelText: 'يُحسب مقاس هذا الجزء بناءً على:',
+                    labelText: 'معادلة حساب مقاس الجزء بناءً على:',
                     border: OutlineInputBorder(),
                   ),
                   items: const [
-                    DropdownMenuItem(
-                        value: 'width', child: Text('العرض الكلي للشباك (W)')),
-                    DropdownMenuItem(
-                        value: 'height',
-                        child: Text('الارتفاع الكلي للشباك (H)')),
-                    DropdownMenuItem(
-                        value: 'width_per_sash',
-                        child: Text('العرض مقسوماً على عدد الضلف (W ÷ الضلف)')),
-                    DropdownMenuItem(
-                        value: 'fixed', child: Text('مقاس ثابت بالسنتيمتر')),
+                    DropdownMenuItem(value: 'height', child: Text('الارتفاع الكلي للشباك/الباب (H)')),
+                    DropdownMenuItem(value: 'width', child: Text('العرض الكلي للشباك/الباب (W)')),
+                    DropdownMenuItem(value: 'width_per_sash', child: Text('العرض مقسوماً على عدد الضلف (W ÷ الضلف)')),
+                    DropdownMenuItem(value: 'height_per_sash', child: Text('الارتفاع مقسوماً على عدد الضلف (H ÷ الضلف)')),
+                    DropdownMenuItem(value: 'fixed', child: Text('مقاس ثابت بالسنتيمتر')),
                   ],
                   onChanged: (v) {
                     if (v != null) setDialogState(() => basis = v);
@@ -421,13 +407,10 @@ class _SectorEditorPageState extends State<SectorEditorPage> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: offsetCtrl,
-                  keyboardType: const TextInputType.numberWithOptions(
-                      signed: true, decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true),
                   decoration: const InputDecoration(
-                    labelText:
-                        'قيمة التخصيم أو الإضافة بالـ سم (مثال: -8.2 أو +1.5 أو 0)',
-                    helperText:
-                        'ضع علامة سالب (-) للخصم من المقاس، أو موجب (+) للزيادة',
+                    labelText: 'قيمة التخصيم بالـ سم (مثال: -8.2 أو +1.5 أو 0)',
+                    helperText: 'ضع سالب (-) للخصم من المقاس، أو موجب (+) للزيادة',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -436,22 +419,16 @@ class _SectorEditorPageState extends State<SectorEditorPage> {
                   controller: qtyCtrl,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
-                    labelText: 'الشباك هيتضاف منه كم قطعة؟ (العدد)',
-                    helperText: 'مثال: 2 قطعة للحلق أو 2 قطعة للسكينة',
+                    labelText: 'العدد (كم قطعة تتضاف للشباك/الباب؟)',
+                    helperText: 'مثال: 2 قطعة للسكينة أو 1 قطعة للمكمل/التقابل',
                     border: OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 8),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'ضرب هذا العدد في عدد الضلف؟',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: const Text(
-                    'فعّل هذا الخيار إذا كان العدد المذكور يخص الضلفة الواحدة (مثل قوائم الضلف)',
-                    style: TextStyle(fontSize: 11.5),
-                  ),
+                  title: const Text('ضرب هذا العدد في عدد الضلف؟', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                  subtitle: const Text('فعّل هذا الخيار إذا كان العدد المذكور يخص الضلفة الواحدة', style: TextStyle(fontSize: 11)),
                   value: multSashes,
                   onChanged: (v) => setDialogState(() => multSashes = v),
                 ),
@@ -475,8 +452,7 @@ class _SectorEditorPageState extends State<SectorEditorPage> {
                 final qty = int.tryParse(qtyCtrl.text.trim()) ?? 1;
 
                 final newPart = SectorPart(
-                  id: existingPart?.id ??
-                      'part_${DateTime.now().millisecondsSinceEpoch}',
+                  id: existingPart?.id ?? 'part_${DateTime.now().millisecondsSinceEpoch}',
                   name: name,
                   role: role,
                   dimensionBasis: basis,
@@ -518,17 +494,15 @@ class _SectorEditorPageState extends State<SectorEditorPage> {
     }
 
     final sector = SectorProfile(
-      id: widget.existingSector?.id ??
-          'custom_${DateTime.now().millisecondsSinceEpoch}',
+      id: widget.existingSector?.id ?? 'custom_${DateTime.now().millisecondsSinceEpoch}',
       name: name,
-      category: _category,
+      companyGroup: _companyCtrl.text.trim().isEmpty ? 'مخصص' : _companyCtrl.text.trim(),
+      systemType: _systemType,
       defaultSashCount: _defaultSashCount,
       imagePath: _imagePath,
       pricePerSquareMeter: double.tryParse(_priceCtrl.text.trim()) ?? 2200.0,
-      glassWidthDeductCm:
-          double.tryParse(_glassWDeductCtrl.text.trim()) ?? 11.4,
-      glassHeightDeductCm:
-          double.tryParse(_glassHDeductCtrl.text.trim()) ?? 11.4,
+      glassWidthDeductCm: double.tryParse(_glassWDeductCtrl.text.trim()) ?? 11.4,
+      glassHeightDeductCm: double.tryParse(_glassHDeductCtrl.text.trim()) ?? 11.4,
       isCustom: true,
       parts: _parts,
     );
@@ -548,86 +522,64 @@ class _SectorEditorPageState extends State<SectorEditorPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.existingSector == null
-            ? 'إضافة قطاع جديد بالصورة والأجزاء'
-            : 'تعديل ومعاينة القطاع'),
-        backgroundColor: const Color(0xFF991B1B),
+        title: Text(widget.existingSector == null ? 'إضافة قطاع جديد بالصورة والأجزاء' : 'تعديل ومعاينة القطاع'),
+        backgroundColor: const Color(0xFF1B110A),
         foregroundColor: Colors.white,
         actions: [
           TextButton.icon(
             onPressed: _saveSector,
-            icon: const Icon(Icons.check_circle, color: Colors.white),
-            label: const Text(
-              'حفظ القطاع',
-              style:
-                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
+            icon: const Icon(Icons.check_circle, color: Color(0xFFF59E0B)),
+            label: const Text('حفظ القطاع', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. بطاقة الاسم والصورة والسعر
+            // 1. بيانات القطاع والصورة
             Card(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Padding(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      '1. بيانات القطاع الأساسية وصورة المعاينة:',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: Color(0xFF991B1B)),
+                      '1. بيانات القطاع وصورة المعاينة:',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5, color: Color(0xFF991B1B)),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         GestureDetector(
                           onTap: () => _pickImage(ImageSource.gallery),
                           child: Container(
-                            width: 96,
-                            height: 96,
+                            width: 90,
+                            height: 90,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                  color: const Color(0xFF991B1B), width: 1.5),
+                              color: const Color(0xFFFEF3C7),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFD97706), width: 1.5),
                             ),
-                            child: (_imagePath != null &&
-                                    _imagePath!.isNotEmpty &&
-                                    File(_imagePath!).existsSync())
+                            child: (_imagePath != null && _imagePath!.isNotEmpty && File(_imagePath!).existsSync())
                                 ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: Image.file(
-                                      File(_imagePath!),
-                                      fit: BoxFit.cover,
-                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.file(File(_imagePath!), fit: BoxFit.cover),
                                   )
                                 : const Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.add_a_photo,
-                                          color: Color(0xFF991B1B), size: 28),
+                                      Icon(Icons.add_a_photo, color: Color(0xFFB45309), size: 26),
                                       SizedBox(height: 4),
-                                      Text(
-                                        'صورة القطاع',
-                                        style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold),
-                                      ),
+                                      Text('صورة القطاع', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold)),
                                     ],
                                   ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Column(
                             children: [
@@ -636,26 +588,23 @@ class _SectorEditorPageState extends State<SectorEditorPage> {
                                 onChanged: (_) => setState(() {}),
                                 decoration: const InputDecoration(
                                   labelText: 'اسم القطاع الجديد',
-                                  hintText: 'مثال: قطاع جامبو خاص / قطاع ورشتي',
+                                  hintText: 'مثال: قطاع جامبو خاص / قطاع الحافظ',
                                   border: OutlineInputBorder(),
+                                  isDense: true,
                                 ),
                               ),
                               const SizedBox(height: 8),
                               Row(
                                 children: [
                                   TextButton.icon(
-                                    onPressed: () =>
-                                        _pickImage(ImageSource.gallery),
-                                    icon: const Icon(Icons.photo_library,
-                                        size: 18),
-                                    label: const Text('من الاستوديو'),
+                                    onPressed: () => _pickImage(ImageSource.gallery),
+                                    icon: const Icon(Icons.photo_library, size: 16),
+                                    label: const Text('استوديو', style: TextStyle(fontSize: 12)),
                                   ),
                                   TextButton.icon(
-                                    onPressed: () =>
-                                        _pickImage(ImageSource.camera),
-                                    icon:
-                                        const Icon(Icons.camera_alt, size: 18),
-                                    label: const Text('التقاط بالكاميرا'),
+                                    onPressed: () => _pickImage(ImageSource.camera),
+                                    icon: const Icon(Icons.camera_alt, size: 16),
+                                    label: const Text('كاميرا', style: TextStyle(fontSize: 12)),
                                   ),
                                 ],
                               ),
@@ -664,220 +613,40 @@ class _SectorEditorPageState extends State<SectorEditorPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     Row(
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: _category,
+                            value: _systemType,
                             decoration: const InputDecoration(
-                              labelText: 'نظام القطاع',
+                              labelText: 'نوع وفتح الفتحة (باب / شباك)',
                               border: OutlineInputBorder(),
+                              isDense: true,
                             ),
                             items: const [
-                              DropdownMenuItem(
-                                  value: 'جرار', child: Text('شباك/باب جرار')),
-                              DropdownMenuItem(
-                                  value: 'مفصلي',
-                                  child: Text('شباك/باب مفصلي')),
-                              DropdownMenuItem(
-                                  value: 'مطبخ', child: Text('قطاع مطابخ')),
-                              DropdownMenuItem(
-                                  value: 'مخصص', child: Text('نظام مخصص')),
+                              DropdownMenuItem(value: 'شباك جرار', child: Text('شباك جرار')),
+                              DropdownMenuItem(value: 'باب جرار', child: Text('باب جرار')),
+                              DropdownMenuItem(value: 'شباك مفصلي', child: Text('شباك مفصلي')),
+                              DropdownMenuItem(value: 'باب مفصلي', child: Text('باب مفصلي')),
+                              DropdownMenuItem(value: 'قلاب / حمام', child: Text('قلاب')),
+                              DropdownMenuItem(value: 'مطبخ', child: Text('قطاع مطابخ')),
+                              DropdownMenuItem(value: 'مخصص', child: Text('نظام مخصص')),
                             ],
                             onChanged: (v) {
-                              if (v != null) setState(() => _category = v);
+                              if (v != null) setState(() => _systemType = v);
                             },
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: TextField(
-                            controller: _priceCtrl,
-                            keyboardType: TextInputType.number,
+                            controller: _companyCtrl,
                             decoration: const InputDecoration(
-                              labelText: 'سعر المتر المربع (ج.م)',
+                              labelText: 'اسم الشركة / المجموعة',
+                              hintText: 'مثال: الشارقة، السعد، الحافظ',
                               border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _glassWDeductCtrl,
-                            keyboardType: TextInputType.number,
-                            onChanged: (_) => setState(() {}),
-                            decoration: const InputDecoration(
-                              labelText: 'خصم عرض الزجاج من الضلفة (سم)',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: TextField(
-                            controller: _glassHDeductCtrl,
-                            keyboardType: TextInputType.number,
-                            onChanged: (_) => setState(() {}),
-                            decoration: const InputDecoration(
-                              labelText: 'خصم ارتفاع الزجاج من الضلفة (سم)',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // 2. أجزاء القطاع (حلق، ضلفة، سكينة، إضافات) والعدد
-            Card(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            '2. أجزاء القطاع (حلق، ضلفة، سكينة، أو أي جزء آخر) والعدد:',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                                color: Color(0xFF15803D)),
-                          ),
-                        ),
-                        ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF15803D),
-                            foregroundColor: Colors.white,
-                          ),
-                          onPressed: () => _showPartDialog(),
-                          icon: const Icon(Icons.add, size: 18),
-                          label: const Text('إضافة جزء للقطاع'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    ...List.generate(_parts.length, (idx) {
-                      final part = _parts[idx];
-                      final sign = part.offsetCm >= 0 ? '+' : '';
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFCBD5E1)),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF991B1B),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                part.role,
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    part.name,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13.5),
-                                  ),
-                                  Text(
-                                    'المعادلة: ${part.basisArabicLabel} ($sign${part.offsetCm} سم) | العدد للشباك: ${part.quantityPerWindow} قطعة ${part.multiplyBySashes ? "(× عدد الضلف)" : "(ثابت للشباك)"}',
-                                    style: const TextStyle(
-                                        fontSize: 12, color: Color(0xFF475569)),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.edit,
-                                  size: 20, color: Color(0xFF1D4ED8)),
-                              onPressed: () => _showPartDialog(
-                                  existingPart: part, editIndex: idx),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline,
-                                  size: 20, color: Colors.red),
-                              onPressed: () {
-                                setState(() {
-                                  _parts.removeAt(idx);
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // 3. شاشة المعاينة الفورية للقطاع قبل الحفظ
-            Card(
-              color: const Color(0xFFF0FDF4),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: const BorderSide(color: Color(0xFF15803D), width: 1.5),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        if (_imagePath != null &&
-                            _imagePath!.isNotEmpty &&
-                            File(_imagePath!).existsSync())
-                          Padding(
-                            padding: const EdgeInsets.only(left: 10),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.file(
-                                File(_imagePath!),
-                                width: 46,
-                                height: 46,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                        Expanded(
-                          child: Text(
-                            '3. شاشة المعاينة الفورية للقطاع: ${_nameCtrl.text.isEmpty ? "(اسم القطاع)" : _nameCtrl.text}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                              color: Color(0xFF15803D),
+                              isDense: true,
                             ),
                           ),
                         ),
@@ -888,41 +657,180 @@ class _SectorEditorPageState extends State<SectorEditorPage> {
                       children: [
                         Expanded(
                           child: TextField(
-                            controller: _previewWCtrl,
+                            controller: _priceCtrl,
                             keyboardType: TextInputType.number,
-                            onChanged: (_) => setState(() {}),
                             decoration: const InputDecoration(
-                              labelText: 'عرض تجريبي (سم)',
-                              filled: true,
-                              fillColor: Colors.white,
+                              labelText: 'سعر المتر المربع (ج.م)',
                               border: OutlineInputBorder(),
+                              isDense: true,
                             ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: TextField(
-                            controller: _previewHCtrl,
+                            controller: _glassWDeductCtrl,
                             keyboardType: TextInputType.number,
-                            onChanged: (_) => setState(() {}),
                             decoration: const InputDecoration(
-                              labelText: 'ارتفاع تجريبي (سم)',
-                              filled: true,
-                              fillColor: Colors.white,
+                              labelText: 'خصم عرض الزجاج (سم)',
                               border: OutlineInputBorder(),
+                              isDense: true,
                             ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
+                          child: TextField(
+                            controller: _glassHDeductCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'خصم ارتفاع الزجاج (سم)',
+                              border: OutlineInputBorder(),
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // 2. أجزاء القطاع المخصصة
+            Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            '2. أجزاء القطاع (سكينة، مكمل، تقابل، حلق، ضلفة، إلخ) والعدد:',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Color(0xFF15803D)),
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF15803D),
+                            foregroundColor: Colors.white,
+                          ),
+                          onPressed: () => _showPartDialog(),
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text('إضافة جزء جديد'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ...List.generate(_parts.length, (idx) {
+                      final part = _parts[idx];
+                      final sign = part.offsetCm >= 0 ? '+' : '';
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFCBD5E1)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF7F1D1D),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                part.name,
+                                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '${part.basisArabicLabel} ($sign${part.offsetCm} سم) | العدد: ${part.quantityPerWindow} قطعة ${part.multiplyBySashes ? "(×عدد الضلف)" : "(للشباك)"}',
+                                style: const TextStyle(fontSize: 11.5, color: Color(0xFF334155)),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit, size: 18, color: Color(0xFF1D4ED8)),
+                              onPressed: () => _showPartDialog(existingPart: part, editIndex: idx),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                              onPressed: () => setState(() => _parts.removeAt(idx)),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // 3. شاشة المعاينة الفورية
+            Card(
+              color: const Color(0xFFFEF3C7),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: const BorderSide(color: Color(0xFFD97706), width: 1.5),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        if (_imagePath != null && _imagePath!.isNotEmpty && File(_imagePath!).existsSync())
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: Image.file(File(_imagePath!), width: 40, height: 40, fit: BoxFit.cover),
+                            ),
+                          ),
+                        Expanded(
+                          child: Text(
+                            '3. شاشة المعاينة الفورية للقطاع: ${_nameCtrl.text.isEmpty ? "(اسم القطاع)" : _nameCtrl.text}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFFB45309)),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _previewWCtrl,
+                            keyboardType: TextInputType.number,
+                            onChanged: (_) => setState(() {}),
+                            decoration: const InputDecoration(labelText: 'عرض تجريبي (سم)', isDense: true, filled: true, fillColor: Colors.white, border: OutlineInputBorder()),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: TextField(
+                            controller: _previewHCtrl,
+                            keyboardType: TextInputType.number,
+                            onChanged: (_) => setState(() {}),
+                            decoration: const InputDecoration(labelText: 'ارتفاع تجريبي (سم)', isDense: true, filled: true, fillColor: Colors.white, border: OutlineInputBorder()),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
                           child: DropdownButtonFormField<int>(
                             value: _previewSashes,
-                            decoration: const InputDecoration(
-                              labelText: 'عدد الضلف',
-                              filled: true,
-                              fillColor: Colors.white,
-                              border: OutlineInputBorder(),
-                            ),
+                            decoration: const InputDecoration(labelText: 'عدد الضلف', isDense: true, filled: true, fillColor: Colors.white, border: OutlineInputBorder()),
                             items: const [
                               DropdownMenuItem(value: 1, child: Text('1 ضلفة')),
                               DropdownMenuItem(value: 2, child: Text('2 ضلفة')),
@@ -936,44 +844,25 @@ class _SectorEditorPageState extends State<SectorEditorPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'نتيجة التخصيم والعدد الفوري للشباك في المعاينة:',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 13),
-                          ),
-                          const Divider(),
+                          const Text('نتيجة مقاسات القص وعدد القطع في المعاينة:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          const Divider(height: 10),
                           ..._parts.map((p) {
-                            final len = p.calculatePieceLength(
-                                pW, pH, _previewSashes);
-                            final cnt =
-                                p.calculateTotalCount(1, _previewSashes);
+                            final len = p.calculatePieceLength(pW, pH, _previewSashes);
+                            final cnt = p.calculateTotalCount(1, _previewSashes);
                             return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 3),
+                              padding: const EdgeInsets.symmetric(vertical: 2),
                               child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('• ${p.name} (${p.role}):',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w600)),
-                                  Text(
-                                    'المقاس: ${len.toStringAsFixed(1)} سم  |  العدد: $cnt قطعة',
-                                    style: const TextStyle(
-                                      color: Color(0xFF991B1B),
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                                  Text('• ${p.name}:'),
+                                  Text('المقاس: ${len.toStringAsFixed(1)} سم  |  العدد: $cnt قطعة', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF7F1D1D))),
                                 ],
                               ),
                             );
@@ -985,21 +874,18 @@ class _SectorEditorPageState extends State<SectorEditorPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 48,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF991B1B),
+                  backgroundColor: const Color(0xFFD97706),
                   foregroundColor: Colors.white,
                 ),
                 onPressed: _saveSector,
                 icon: const Icon(Icons.save),
-                label: const Text(
-                  'حفظ القطاع وإضافته لقائمة القطاعات',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                label: const Text('حفظ القطاع في قائمة القطاعات', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
               ),
             ),
           ],

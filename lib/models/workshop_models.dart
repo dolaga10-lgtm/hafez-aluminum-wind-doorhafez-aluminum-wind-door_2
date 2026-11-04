@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
-/// يمثل جزءاً داخل القطاع (مثل: حلق، ضلفة، سكينة، محبس، بار، كاب، إلخ)
+/// يمثل جزءاً داخل القطاع (سكينة، حلق، ضلفة، مكمل، تقابل، باكتة، محبس، أو أي مسمى مخصص)
 class SectorPart {
   String id;
-  String name; // اسم الجزء (مثل: حلق علوي/سفلي، سكينة، قائم ضلفة)
-  String role; // الفئة: حلق | ضلفة | سكينة | إضافي
-  String dimensionBasis; // width | height | width_per_sash | fixed
+  String name; // اسم الجزء الحر (سكينة، حلق، ضلفة، مكمل، تقابل، باكتة، محبس...)
+  String role; // تصنيف الجزء: حلق | ضلفة | سكينة | مكمل | تقابل | باكتة | محبس | إضافي
+  String dimensionBasis; // width | height | width_per_sash | height_per_sash | fixed
   double offsetCm; // قيمة التخصيم أو الإضافة بالسنتيمتر (سالب للخصم، موجب للإضافة)
-  int quantityPerWindow; // العدد المضاف لكل شباك
+  int quantityPerWindow; // كم قطعة تضاف للشباك/الباب
   bool multiplyBySashes; // هل يُضرب العدد في عدد الضلف؟
 
   SectorPart({
@@ -21,7 +21,7 @@ class SectorPart {
     this.multiplyBySashes = false,
   });
 
-  /// حساب طول القطعة الواحدة بالسنتيمتر بناءً على عرض وارتفاع الشباك وعدد الضلف
+  /// حساب طول القطعة الواحدة بالسنتيمتر بناءً على أبعاد الشباك/الباب وعدد الضلف
   double calculatePieceLength(double widthCm, double heightCm, int sashCount) {
     final int safeSashes = sashCount > 0 ? sashCount : 1;
     double baseVal = 0.0;
@@ -35,6 +35,9 @@ class SectorPart {
       case 'width_per_sash':
         baseVal = widthCm / safeSashes;
         break;
+      case 'height_per_sash':
+        baseVal = heightCm / safeSashes;
+        break;
       case 'fixed':
         baseVal = 0.0;
         break;
@@ -45,7 +48,7 @@ class SectorPart {
     return result > 0 ? double.parse(result.toStringAsFixed(2)) : 0.0;
   }
 
-  /// حساب إجمالي عدد القطع المطلوبة لهذا الجزء
+  /// حساب إجمالي عدد القطع لهذا الجزء
   int calculateTotalCount(int windowQuantity, int sashCount) {
     final int safeWindows = windowQuantity > 0 ? windowQuantity : 1;
     final int safeSashes = sashCount > 0 ? sashCount : 1;
@@ -63,6 +66,8 @@ class SectorPart {
         return 'الارتفاع الكلي (H)';
       case 'width_per_sash':
         return 'العرض ÷ عدد الضلف';
+      case 'height_per_sash':
+        return 'الارتفاع ÷ عدد الضلف';
       case 'fixed':
         return 'طول ثابت (سم)';
       default:
@@ -83,7 +88,7 @@ class SectorPart {
   factory SectorPart.fromJson(Map<String, dynamic> json) => SectorPart(
         id: json['id']?.toString() ?? '',
         name: json['name']?.toString() ?? '',
-        role: json['role']?.toString() ?? 'حلق',
+        role: json['role']?.toString() ?? 'جزء مخصص',
         dimensionBasis: json['dimensionBasis']?.toString() ?? 'width',
         offsetCm: (json['offsetCm'] as num?)?.toDouble() ?? 0.0,
         quantityPerWindow: (json['quantityPerWindow'] as num?)?.toInt() ?? 1,
@@ -91,13 +96,14 @@ class SectorPart {
       );
 }
 
-/// يمثل قطاع ألومنيوم أو uPVC (سواء افتراضي أو مضاف بواسطة المستخدم مع صورته وأجزائه)
+/// يمثل قطاع ألومنيوم أو uPVC أو باب أو شباك أو مطبخ
 class SectorProfile {
   String id;
   String name;
-  String category; // جرار | مفصلي | مطبخ | مخصص
+  String companyGroup; // الشارقة | السعد PS | الدولية ماكسيم | ألوميل | فولكانو | فالف | uPVC | مطابخ | مخصص
+  String systemType; // شباك جرار | باب جرار | شباك مفصلي | باب مفصلي | قلاب | مطبخ | مخصص
   int defaultSashCount;
-  String? imagePath; // مسار صورة القطاع المرفوعة من الجهاز
+  String? imagePath; // مسار صورة القطاع المرفوعة
   double pricePerSquareMeter; // سعر المتر المربع في التسعير الخارجي
   double glassWidthDeductCm; // خصم عرض الزجاج من عرض الضلفة (سم)
   double glassHeightDeductCm; // خصم ارتفاع الزجاج من ارتفاع الضلفة (سم)
@@ -107,7 +113,8 @@ class SectorProfile {
   SectorProfile({
     required this.id,
     required this.name,
-    required this.category,
+    required this.companyGroup,
+    required this.systemType,
     this.defaultSashCount = 2,
     this.imagePath,
     required this.pricePerSquareMeter,
@@ -117,7 +124,10 @@ class SectorProfile {
     required this.parts,
   });
 
-  /// حساب عرض الضلفة الواحدة التقريبي لاستخراج مقاس الزجاج
+  bool get isDoor => systemType.contains('باب');
+  bool get isSliding => systemType.contains('جرار');
+  bool get isHinged => systemType.contains('مفصلي') || systemType.contains('قلاب');
+
   double calculateSingleSashWidth(double widthCm, int sashCount) {
     for (final p in parts) {
       if (p.role == 'ضلفة' &&
@@ -126,26 +136,23 @@ class SectorProfile {
       }
     }
     final int safeSashes = sashCount > 0 ? sashCount : 1;
-    return (widthCm / safeSashes) + 1.5;
+    return (widthCm / safeSashes) + (isSliding ? 1.5 : -4.8);
   }
 
-  /// حساب ارتفاع الضلفة الواحدة لاستخراج مقاس الزجاج
   double calculateSingleSashHeight(double heightCm, int sashCount) {
     for (final p in parts) {
       if (p.role == 'ضلفة' && p.dimensionBasis == 'height') {
         return p.calculatePieceLength(0, heightCm, sashCount);
       }
     }
-    return math.max(0.0, heightCm - 8.2);
+    return math.max(0.0, heightCm - (isSliding ? 8.2 : 4.8));
   }
 
-  /// حساب عرض فردة الزجاج الواحدة بالسنتيمتر
   double calculateGlassWidthCm(double widthCm, int sashCount) {
     final double sashW = calculateSingleSashWidth(widthCm, sashCount);
     return math.max(0.0, double.parse((sashW - glassWidthDeductCm).toStringAsFixed(2)));
   }
 
-  /// حساب ارتفاع فردة الزجاج الواحدة بالسنتيمتر
   double calculateGlassHeightCm(double heightCm, int sashCount) {
     final double sashH = calculateSingleSashHeight(heightCm, sashCount);
     return math.max(0.0, double.parse((sashH - glassHeightDeductCm).toStringAsFixed(2)));
@@ -154,7 +161,8 @@ class SectorProfile {
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
-        'category': category,
+        'companyGroup': companyGroup,
+        'systemType': systemType,
         'defaultSashCount': defaultSashCount,
         'imagePath': imagePath,
         'pricePerSquareMeter': pricePerSquareMeter,
@@ -167,7 +175,8 @@ class SectorProfile {
   factory SectorProfile.fromJson(Map<String, dynamic> json) => SectorProfile(
         id: json['id']?.toString() ?? '',
         name: json['name']?.toString() ?? '',
-        category: json['category']?.toString() ?? 'جرار',
+        companyGroup: json['companyGroup']?.toString() ?? 'مخصص',
+        systemType: json['systemType']?.toString() ?? 'شباك جرار',
         defaultSashCount: (json['defaultSashCount'] as num?)?.toInt() ?? 2,
         imagePath: json['imagePath']?.toString(),
         pricePerSquareMeter:
@@ -183,7 +192,7 @@ class SectorProfile {
       );
 }
 
-/// يمثل نوع زجاج في قائمة التسعير الخارجية
+/// يمثل نوع زجاج في قائمة التسعير
 class GlassTypeItem {
   String id;
   String name;
@@ -209,13 +218,19 @@ class GlassTypeItem {
       );
 }
 
-/// الإعدادات العامة للتسعير وتقطيع الأعواد
+/// إعدادات التسعير وطبعة شركة الحافظ
 class PricingSettings {
-  double doubleSpacerPricePerMeter; // سعر المتر الطولي للسبيسر المحيط بين الزجاجتين في الدبل
-  double georgianBarPricePerMeter; // سعر المتر الطولي للجورجيا
-  double defaultStockBarLengthCm; // طول العود الافتراضي (600 سم)
-  double defaultSawKerfMm; // سُمك صينية المنشار بالملليمتر (4 مم)
-  bool enforceMinimumOneSquareMeter; // احتساب الشباك الأقل من متر على أنه 1 م2 كحد أدنى
+  double doubleSpacerPricePerMeter;
+  double georgianBarPricePerMeter;
+  double defaultStockBarLengthCm;
+  double defaultSawKerfMm;
+  bool enforceMinimumOneSquareMeter;
+
+  String companyName;
+  String companySubtitle;
+  String companyPhones;
+  String companyAddress;
+  String termsAndConditions;
 
   PricingSettings({
     this.doubleSpacerPricePerMeter = 45.0,
@@ -223,6 +238,13 @@ class PricingSettings {
     this.defaultStockBarLengthCm = 600.0,
     this.defaultSawKerfMm = 4.0,
     this.enforceMinimumOneSquareMeter = false,
+    this.companyName = 'شركة الحافظ',
+    this.companySubtitle =
+        'للمطابخ الألومنيوم والخشب وجميع أعمال الأخشاب والواجهات الزجاجية (خبرة منذ 1980)',
+    this.companyPhones = '01000000000 - 01200000000',
+    this.companyAddress = 'جمهورية مصر العربية',
+    this.termsAndConditions =
+        'الأسعار شاملة التوريد والتركيب والضمان المعتمد من شركة الحافظ.',
   });
 
   Map<String, dynamic> toJson() => {
@@ -231,6 +253,11 @@ class PricingSettings {
         'defaultStockBarLengthCm': defaultStockBarLengthCm,
         'defaultSawKerfMm': defaultSawKerfMm,
         'enforceMinimumOneSquareMeter': enforceMinimumOneSquareMeter,
+        'companyName': companyName,
+        'companySubtitle': companySubtitle,
+        'companyPhones': companyPhones,
+        'companyAddress': companyAddress,
+        'termsAndConditions': termsAndConditions,
       };
 
   factory PricingSettings.fromJson(Map<String, dynamic> json) => PricingSettings(
@@ -244,13 +271,23 @@ class PricingSettings {
             (json['defaultSawKerfMm'] as num?)?.toDouble() ?? 4.0,
         enforceMinimumOneSquareMeter:
             json['enforceMinimumOneSquareMeter'] == true,
+        companyName: json['companyName']?.toString() ?? 'شركة الحافظ',
+        companySubtitle: json['companySubtitle']?.toString() ??
+            'للمطابخ الألومنيوم والخشب وجميع أعمال الأخشاب والواجهات الزجاجية (خبرة منذ 1980)',
+        companyPhones: json['companyPhones']?.toString() ?? '01000000000',
+        companyAddress: json['companyAddress']?.toString() ?? 'مصر',
+        termsAndConditions: json['termsAndConditions']?.toString() ?? '',
       );
 }
 
-/// يمثل بند شباك أو باب داخل مقايسة العميل
+/// بند شباك / باب / مطبخ داخل مقايسة العميل شامل البار واتجاه الفتح والمعاينة الهندسية
 class ClientWindowItem {
   String id;
-  String label; // وصف المكان (مثلاً: شباك صالة، شباك مطبخ)
+  String label; // وصف الفتحة (شباك صالة، باب بلكونة، باب مطبخ، إلخ)
+  String unitType; // شباك | باب | مطبخ
+  String openType; // جرار | مفصلي | قلاب | ثابت
+  String barType; // بار عادي | بار مقلوب | بدون بار
+  String openDirection; // يمين للداخل | شمال للداخل | يمين للخارج | شمال للخارج
   String sectorId;
   String sectorName;
   double sectorPricePerM2;
@@ -259,9 +296,9 @@ class ClientWindowItem {
   int quantity;
   int sashCount;
 
-  // إعدادات الزجاج (سنجل أو دبل + سبيسر)
+  // إعدادات الزجاج
   bool hasGlass;
-  bool isDoubleGlass; // لو true يجمع الفردتين + السبيسر
+  bool isDoubleGlass; // يجمع الفردتين + السبيسر
   String? glass1Id;
   String glass1Name;
   double glass1PricePerM2;
@@ -272,12 +309,16 @@ class ClientWindowItem {
 
   // إعدادات الجورجيا
   bool hasGeorgianBars;
-  double georgianMetersPerWindow; // عدد أمتار الجورجيا في الشباك الواحد
+  double georgianMetersPerWindow;
   double georgianPricePerMeter;
 
   ClientWindowItem({
     required this.id,
     required this.label,
+    this.unitType = 'شباك',
+    this.openType = 'جرار',
+    this.barType = 'بار عادي',
+    this.openDirection = 'يمين للداخل',
     required this.sectorId,
     required this.sectorName,
     required this.sectorPricePerM2,
@@ -299,7 +340,7 @@ class ClientWindowItem {
     this.georgianPricePerMeter = 85.0,
   });
 
-  /// مساحة الشباك الواحد بالمتر المربع
+  /// مساحة الفتحة بالمتر المربع
   double singleWindowAreaM2({bool minOneM2 = false}) {
     final double rawArea = (widthCm / 100.0) * (heightCm / 100.0);
     if (minOneM2 && rawArea < 1.0) {
@@ -308,11 +349,9 @@ class ClientWindowItem {
     return rawArea;
   }
 
-  /// إجمالي المساحة لكل العدد بالمتر المربع
   double totalAreaM2({bool minOneM2 = false}) =>
       singleWindowAreaM2(minOneM2: minOneM2) * quantity;
 
-  /// محيط الزجاج بالمتر الطولي لحساب السبيسر في الزجاج الدبل
   double totalSpacerMeters(SectorProfile? sector) {
     if (!hasGlass || !isDoubleGlass) return 0.0;
     final double gwCm = sector != null
@@ -325,11 +364,9 @@ class ClientWindowItem {
     return singleSashPerimeterM * (sashCount > 0 ? sashCount : 1) * quantity;
   }
 
-  /// تكلفة القطاع فقط
   double calculateSectorCost({bool minOneM2 = false}) =>
       totalAreaM2(minOneM2: minOneM2) * sectorPricePerM2;
 
-  /// تكلفة الزجاج (الفردة الواحدة في السنجل، أو الفردتين + السبيسر في الدبل)
   double calculateGlassAndSpacerCost(SectorProfile? sector, {bool minOneM2 = false}) {
     if (!hasGlass) return 0.0;
     final double area = totalAreaM2(minOneM2: minOneM2);
@@ -342,13 +379,11 @@ class ClientWindowItem {
     }
   }
 
-  /// تكلفة الجورجيا
   double calculateGeorgianCost() {
     if (!hasGeorgianBars || georgianMetersPerWindow <= 0) return 0.0;
     return georgianMetersPerWindow * quantity * georgianPricePerMeter;
   }
 
-  /// التكلفة الإجمالية للبند (القطاع + الزجاج والسبيسر + الجورجيا)
   double calculateTotalCost(SectorProfile? sector, {bool minOneM2 = false}) {
     return calculateSectorCost(minOneM2: minOneM2) +
         calculateGlassAndSpacerCost(sector, minOneM2: minOneM2) +
@@ -366,6 +401,10 @@ class ClientWindowItem {
   Map<String, dynamic> toJson() => {
         'id': id,
         'label': label,
+        'unitType': unitType,
+        'openType': openType,
+        'barType': barType,
+        'openDirection': openDirection,
         'sectorId': sectorId,
         'sectorName': sectorName,
         'sectorPricePerM2': sectorPricePerM2,
@@ -390,7 +429,11 @@ class ClientWindowItem {
   factory ClientWindowItem.fromJson(Map<String, dynamic> json) =>
       ClientWindowItem(
         id: json['id']?.toString() ?? '',
-        label: json['label']?.toString() ?? 'شباك',
+        label: json['label']?.toString() ?? 'بند',
+        unitType: json['unitType']?.toString() ?? 'شباك',
+        openType: json['openType']?.toString() ?? 'جرار',
+        barType: json['barType']?.toString() ?? 'بار عادي',
+        openDirection: json['openDirection']?.toString() ?? 'يمين للداخل',
         sectorId: json['sectorId']?.toString() ?? '',
         sectorName: json['sectorName']?.toString() ?? '',
         sectorPricePerM2:
@@ -419,7 +462,7 @@ class ClientWindowItem {
       );
 }
 
-/// يمثل سجل عميل كامل مع جميع شبابيكه ومقايساته
+/// سجل العميل الكامل
 class ClientRecord {
   String id;
   String clientName;
@@ -464,11 +507,8 @@ class ClientRecord {
             .map((e) => ClientWindowItem.fromJson(Map<String, dynamic>.from(e)))
             .toList(),
       );
-
-  String toRawJson() => jsonEncode(toJson());
 }
 
-/// نتيجة تقسيم عود ألومنيوم قياسي (600 سم)
 class BarCutPlan {
   int barNumber;
   double stockLengthCm;

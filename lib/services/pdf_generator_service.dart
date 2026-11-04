@@ -11,21 +11,119 @@ import 'workshop_storage.dart';
 class PdfGeneratorService {
   static pw.Font? _regularFont;
   static pw.Font? _boldFont;
+  static pw.MemoryImage? _hafezLogoImage;
 
-  static Future<void> _ensureFontsLoaded() async {
-    if (_regularFont != null && _boldFont != null) return;
-    final regData = await rootBundle.load('assets/fonts/Rubik-Regular.ttf');
-    final boldData = await rootBundle.load('assets/fonts/Rubik-Bold.ttf');
-    _regularFont = pw.Font.ttf(regData);
-    _boldFont = pw.Font.ttf(boldData);
+  static Future<void> _ensureAssetsLoaded() async {
+    if (_regularFont == null || _boldFont == null) {
+      final regData = await rootBundle.load('assets/fonts/Rubik-Regular.ttf');
+      final boldData = await rootBundle.load('assets/fonts/Rubik-Bold.ttf');
+      _regularFont = pw.Font.ttf(regData);
+      _boldFont = pw.Font.ttf(boldData);
+    }
+    if (_hafezLogoImage == null) {
+      try {
+        final logoBytes = await rootBundle.load('assets/images/hafez_icon.png');
+        _hafezLogoImage = pw.MemoryImage(logoBytes.buffer.asUint8List());
+      } catch (_) {}
+    }
   }
 
-  /// 1. توليد ملف PDF الأول: كشف عرض السعر للعميل (Quotation PDF)
+  /// ترويسة شركة الحافظ الرسمية في ملفات الـ PDF
+  static pw.Widget _buildHafezHeader({
+    required String title,
+    required String docDate,
+    required ClientRecord client,
+    required PricingSettings settings,
+    PdfColor bannerColor = const PdfColor.fromInt(0xFF7F1D1D),
+  }) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(12),
+      decoration: pw.BoxDecoration(
+        color: bannerColor,
+        borderRadius: pw.BorderRadius.circular(8),
+      ),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.center,
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Row(
+            children: [
+              if (_hafezLogoImage != null)
+                pw.Container(
+                  width: 48,
+                  height: 48,
+                  margin: const pw.EdgeInsets.only(left: 10),
+                  child: pw.ClipRRect(
+                    horizontalRadius: 6,
+                    verticalRadius: 6,
+                    child: pw.Image(_hafezLogoImage!, fit: pw.BoxFit.cover),
+                  ),
+                ),
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    settings.companyName,
+                    style: pw.TextStyle(
+                      color: PdfColors.white,
+                      fontSize: 16,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.SizedBox(height: 2),
+                  pw.Text(
+                    settings.companySubtitle,
+                    style: const pw.TextStyle(
+                      color: PdfColor.fromInt(0xFFFEF2F2),
+                      fontSize: 8.5,
+                    ),
+                  ),
+                  pw.SizedBox(height: 2),
+                  pw.Text(
+                    title,
+                    style: pw.TextStyle(
+                      color: PdfColor.fromInt(0xFFFDE68A),
+                      fontSize: 12,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            children: [
+              pw.Text(
+                'العميل: ${client.clientName}',
+                style: pw.TextStyle(
+                  color: PdfColors.white,
+                  fontSize: 12,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              if (client.clientPhone.isNotEmpty)
+                pw.Text(
+                  'الهاتف: ${client.clientPhone}',
+                  style: const pw.TextStyle(color: PdfColors.white, fontSize: 9.5),
+                ),
+              pw.Text(
+                'التاريخ: $docDate',
+                style: const pw.TextStyle(color: PdfColors.white, fontSize: 9),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 1. توليد كشف عرض السعر المعماري الموضح برسم كروكي هندسي لكل فتحة وسعرها
   static Future<Uint8List> buildQuotationPdfBytes({
     required ClientRecord client,
     required WorkshopStorage storage,
   }) async {
-    await _ensureFontsLoaded();
+    await _ensureAssetsLoaded();
     final pdf = pw.Document();
     final bool minOneM2 = storage.pricingSettings.enforceMinimumOneSquareMeter;
 
@@ -34,167 +132,182 @@ class PdfGeneratorService {
     double totalGeorgianCost = 0.0;
     double totalAreaAll = 0.0;
 
-    final List<List<String>> tableRows = [];
-    for (int i = 0; i < client.items.length; i++) {
-      final item = client.items[i];
+    for (final item in client.items) {
       final sector = storage.getSectorById(item.sectorId);
       final double area = item.totalAreaM2(minOneM2: minOneM2);
       final double secCost = item.calculateSectorCost(minOneM2: minOneM2);
-      final double glCost =
-          item.calculateGlassAndSpacerCost(sector, minOneM2: minOneM2);
+      final double glCost = item.calculateGlassAndSpacerCost(sector, minOneM2: minOneM2);
       final double geoCost = item.calculateGeorgianCost();
-      final double rowTotal = secCost + glCost + geoCost;
 
       totalAreaAll += area;
       totalSectorsCost += secCost;
       totalGlassAndSpacerCost += glCost;
       totalGeorgianCost += geoCost;
-
-      tableRows.add([
-        rowTotal.toStringAsFixed(1),
-        geoCost > 0
-            ? '${item.georgianMetersPerWindow * item.quantity} م (${geoCost.toStringAsFixed(0)})'
-            : 'لا يوجد',
-        item.glassSummaryText,
-        area.toStringAsFixed(2),
-        '${item.quantity}',
-        '${item.widthCm.toStringAsFixed(1)} × ${item.heightCm.toStringAsFixed(1)} سم',
-        '${item.sectorName} (${item.sashCount} ضلفة)',
-        item.label,
-        '${i + 1}',
-      ]);
     }
 
-    final double grandSubTotal =
-        totalSectorsCost + totalGlassAndSpacerCost + totalGeorgianCost;
-    final double netTotal =
-        (grandSubTotal - client.discountAmount).clamp(0.0, double.infinity);
+    final double grandSubTotal = totalSectorsCost + totalGlassAndSpacerCost + totalGeorgianCost;
+    final double netTotal = (grandSubTotal - client.discountAmount).clamp(0.0, double.infinity);
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(24),
+        margin: const pw.EdgeInsets.all(20),
         theme: pw.ThemeData.withFont(
           base: _regularFont!,
           bold: _boldFont!,
         ),
         textDirection: pw.TextDirection.rtl,
         build: (context) => [
-          // Header Banner
-          pw.Container(
-            padding: const pw.EdgeInsets.all(14),
-            decoration: pw.BoxDecoration(
-              color: PdfColor.fromHex('#991B1B'),
-              borderRadius: pw.BorderRadius.circular(8),
-            ),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'الورشة الذكية — كشف عرض سعر مقايسة',
-                      style: pw.TextStyle(
-                        color: PdfColors.white,
-                        fontSize: 16,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.SizedBox(height: 4),
-                    pw.Text(
-                      'تاريخ الإصدار: ${client.createdAt}',
-                      style: const pw.TextStyle(
-                        color: PdfColors.white,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
-                ),
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.end,
-                  children: [
-                    pw.Text(
-                      'العميل: ${client.clientName}',
-                      style: pw.TextStyle(
-                        color: PdfColors.white,
-                        fontSize: 13,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    if (client.clientPhone.isNotEmpty)
-                      pw.Text(
-                        'الهاتف: ${client.clientPhone}',
-                        style: const pw.TextStyle(
-                          color: PdfColors.white,
-                          fontSize: 10,
-                        ),
-                      ),
-                    if (client.clientAddress.isNotEmpty)
-                      pw.Text(
-                        'العنوان: ${client.clientAddress}',
-                        style: const pw.TextStyle(
-                          color: PdfColors.white,
-                          fontSize: 10,
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
+          _buildHafezHeader(
+            title: 'كشف عرض سعر مقايسة معتمد بالرسم الهندسي والمواصفات',
+            docDate: client.createdAt,
+            client: client,
+            settings: storage.pricingSettings,
+            bannerColor: const PdfColor.fromInt(0xFF7F1D1D),
           ),
-          pw.SizedBox(height: 16),
+          pw.SizedBox(height: 12),
 
-          // Items Table
-          pw.TableHelper.fromTextArray(
-            headers: [
-              'الإجمالي (ج.م)',
-              'الجورجيا',
-              'تفاصيل الزجاج والسبيسر',
-              'المساحة م²',
-              'العدد',
-              'المقاس (عرض×ارتفاع)',
-              'القطاع والنظام',
-              'البند / الغرفة',
-              'م',
-            ],
-            data: tableRows,
-            headerStyle: pw.TextStyle(
-              color: PdfColors.white,
-              fontWeight: pw.FontWeight.bold,
-              fontSize: 8.5,
-            ),
-            headerDecoration: pw.BoxDecoration(
-              color: PdfColor.fromHex('#1E293B'),
-            ),
-            cellStyle: const pw.TextStyle(fontSize: 8.2),
-            cellAlignment: pw.Alignment.center,
-            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.6),
-          ),
-          pw.SizedBox(height: 18),
+          // بطاقات الفتحات: كل فتحة مرسومة برسم كروكي معماري مع أبعادها وسعر المتر وسعرها الإجمالي
+          ...List.generate(client.items.length, (i) {
+            final item = client.items[i];
+            final sector = storage.getSectorById(item.sectorId);
+            final double area = item.totalAreaM2(minOneM2: minOneM2);
+            final double singleArea = item.singleWindowAreaM2(minOneM2: minOneM2);
+            final double secCost = item.calculateSectorCost(minOneM2: minOneM2);
+            final double glCost = item.calculateGlassAndSpacerCost(sector, minOneM2: minOneM2);
+            final double geoCost = item.calculateGeorgianCost();
+            final double rowTotal = secCost + glCost + geoCost;
 
-          // Financial Summary Box
+            return pw.Container(
+              margin: const pw.EdgeInsets.only(bottom: 8),
+              padding: const pw.EdgeInsets.all(8),
+              decoration: pw.BoxDecoration(
+                color: const PdfColor.fromInt(0xFFF8FAFC),
+                border: pw.Border.all(color: const PdfColor.fromInt(0xFFCBD5E1), width: 0.8),
+                borderRadius: pw.BorderRadius.circular(6),
+              ),
+              child: pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  // الرسم الكروكي المعماري للشباك / الباب
+                  pw.Container(
+                    width: 70,
+                    height: 60,
+                    margin: const pw.EdgeInsets.only(left: 10),
+                    decoration: pw.BoxDecoration(
+                      color: const PdfColor.fromInt(0xFF0F172A),
+                      borderRadius: pw.BorderRadius.circular(4),
+                      border: pw.Border.all(color: const PdfColor.fromInt(0xFFD97706), width: 1),
+                    ),
+                    child: pw.Center(
+                      child: pw.CustomPaint(
+                        size: const PdfPoint(56, 46),
+                        painter: (PdfGraphics canvas, PdfPoint size) {
+                          _drawPdfWindowSchema(
+                            canvas,
+                            size,
+                            item.widthCm,
+                            item.heightCm,
+                            item.sashCount,
+                            item.openType,
+                            item.barType,
+                            item.hasGeorgianBars,
+                            item.isDoubleGlass,
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+
+                  // تفاصيل المقاس والمواصفات
+                  pw.Expanded(
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Row(
+                          children: [
+                            pw.Container(
+                              padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                              decoration: pw.BoxDecoration(
+                                color: const PdfColor.fromInt(0xFF7F1D1D),
+                                borderRadius: pw.BorderRadius.circular(3),
+                              ),
+                              child: pw.Text(
+                                '${i + 1}',
+                                style: pw.TextStyle(color: PdfColors.white, fontSize: 8, fontWeight: pw.FontWeight.bold),
+                              ),
+                            ),
+                            pw.SizedBox(width: 5),
+                            pw.Text(
+                              '${item.label} [${item.unitType} ${item.openType} - ${item.sashCount} ضلفة]',
+                              style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: const PdfColor.fromInt(0xFF0F172A)),
+                            ),
+                          ],
+                        ),
+                        pw.SizedBox(height: 2),
+                        pw.Text(
+                          'المقاس: ${item.widthCm.toStringAsFixed(1)} × ${item.heightCm.toStringAsFixed(1)} سم  |  العدد: ${item.quantity}  |  المساحة: ${singleArea.toStringAsFixed(2)} م² (الإجمالي: ${area.toStringAsFixed(2)} م²)',
+                          style: const pw.TextStyle(fontSize: 8.2, color: PdfColor.fromInt(0xFF334155)),
+                        ),
+                        pw.Text(
+                          'القطاع: ${item.sectorName} (${item.sectorPricePerM2.toStringAsFixed(0)} ج.م/م²)  |  البار: ${item.barType}  |  الفتح: ${item.openDirection}',
+                          style: const pw.TextStyle(fontSize: 7.8, color: PdfColor.fromInt(0xFF475569)),
+                        ),
+                        pw.Text(
+                          'الزجاج: ${item.glassSummaryText} ${item.hasGeorgianBars ? " + جورجيا" : ""}',
+                          style: pw.TextStyle(fontSize: 7.8, color: const PdfColor.fromInt(0xFF7F1D1D), fontWeight: pw.FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // السعر الإجمالي للبند
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    decoration: pw.BoxDecoration(
+                      color: const PdfColor.fromInt(0xFFFEF2F2),
+                      borderRadius: pw.BorderRadius.circular(6),
+                      border: pw.Border.all(color: const PdfColor.fromInt(0xFF7F1D1D), width: 0.8),
+                    ),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.end,
+                      children: [
+                        pw.Text('إجمالي البند', style: const pw.TextStyle(fontSize: 7.5, color: PdfColor.fromInt(0xFF475569))),
+                        pw.Text(
+                          '${rowTotal.toStringAsFixed(1)} ج.م',
+                          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: const PdfColor.fromInt(0xFF7F1D1D)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          pw.SizedBox(height: 12),
+
+          // صندوق الإجماليات والملخص المالي
           pw.Container(
             padding: const pw.EdgeInsets.all(12),
             decoration: pw.BoxDecoration(
-              color: PdfColor.fromHex('#F8FAFC'),
-              border: pw.Border.all(color: PdfColor.fromHex('#991B1B'), width: 1.2),
+              color: const PdfColor.fromInt(0xFFF8FAFC),
+              border: pw.Border.all(color: const PdfColor.fromInt(0xFF7F1D1D), width: 1.2),
               borderRadius: pw.BorderRadius.circular(8),
             ),
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Text(
-                  'ملخص عرض السعر المالي:',
+                  'ملخص الحسابات المالية لعرض السعر:',
                   style: pw.TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: pw.FontWeight.bold,
-                    color: PdfColor.fromHex('#991B1B'),
+                    color: const PdfColor.fromInt(0xFF7F1D1D),
                   ),
                 ),
-                pw.SizedBox(height: 6),
-                _summaryRow('إجمالي عدد البنود والمساحة الكلية:',
-                    '${client.items.length} بند — إجمالي ${totalAreaAll.toStringAsFixed(2)} م²'),
+                pw.SizedBox(height: 4),
+                _summaryRow('إجمالي عدد الفتحات والمساحة الكلية:',
+                    '${client.items.length} فتحة — إجمالي ${totalAreaAll.toStringAsFixed(2)} م²'),
                 _summaryRow('إجمالي تكلفة قطاعات الألومنيوم/uPVC:',
                     '${totalSectorsCost.toStringAsFixed(2)} ج.م'),
                 _summaryRow('إجمالي تكلفة الزجاج (شامل الدبل والسبيسر):',
@@ -213,11 +326,32 @@ class PdfGeneratorService {
               ],
             ),
           ),
+          pw.SizedBox(height: 10),
+          pw.Container(
+            padding: const pw.EdgeInsets.all(6),
+            decoration: pw.BoxDecoration(
+              color: const PdfColor.fromInt(0xFFFEF3C7),
+              borderRadius: pw.BorderRadius.circular(5),
+            ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(
+                  '📞 اتصل بنا: ${storage.pricingSettings.companyPhones}',
+                  style: const pw.TextStyle(fontSize: 8, color: PdfColors.black),
+                ),
+                pw.Text(
+                  'العنوان: ${storage.pricingSettings.companyAddress}',
+                  style: const pw.TextStyle(fontSize: 8, color: PdfColors.black),
+                ),
+              ],
+            ),
+          ),
           if (client.notes.isNotEmpty) ...[
-            pw.SizedBox(height: 12),
+            pw.SizedBox(height: 6),
             pw.Text(
-              'ملاحظات وشروط التعاقد: ${client.notes}',
-              style: const pw.TextStyle(fontSize: 9.5),
+              'شروط وملاحظات: ${client.notes}',
+              style: const pw.TextStyle(fontSize: 8),
             ),
           ],
         ],
@@ -227,15 +361,14 @@ class PdfGeneratorService {
     return pdf.save();
   }
 
-  /// 2. توليد ملف PDF الثاني: كشف الطلبية الشامل والتخصيم وتقطيع الزجاج والأعواد
+  /// 2. توليد كشف الطلبية الشامل والتخصيم والزجاج والأعواد (Order & Cutting PDF)
   static Future<Uint8List> buildOrderAndCuttingPdfBytes({
     required ClientRecord client,
     required WorkshopStorage storage,
   }) async {
-    await _ensureFontsLoaded();
+    await _ensureAssetsLoaded();
     final pdf = pw.Document();
 
-    // تجميع أجزاء القطاعات لكل الشبابيك + تجميع مقاسات الزجاج والسبيسر والجورجيا
     final List<List<String>> partsCuttingRows = [];
     final List<List<String>> glassOrderRows = [];
     final Map<String, List<double>> piecesByPartKey = {};
@@ -256,7 +389,7 @@ class PdfGeneratorService {
             part.role,
             part.name,
             sector.name,
-            '${item.label} (${item.widthCm.toStringAsFixed(0)}×${item.heightCm.toStringAsFixed(0)})',
+            '${item.label} (${item.unitType} ${item.openType})',
           ]);
 
           final String groupKey = '${sector.name} — ${part.name}';
@@ -267,7 +400,6 @@ class PdfGeneratorService {
         }
       }
 
-      // حساب مقاسات الزجاج الصافية لهذا الشباك
       if (item.hasGlass) {
         final double gw = sector != null
             ? sector.calculateGlassWidthCm(item.widthCm, item.sashCount)
@@ -280,31 +412,30 @@ class PdfGeneratorService {
         if (!item.isDoubleGlass) {
           glassOrderRows.add([
             item.hasGeorgianBars
-                ? '${(item.georgianMetersPerWindow * item.quantity).toStringAsFixed(2)} م'
+                ? '${(item.georgianMetersPerWindow * item.quantity).toStringAsFixed(1)} م'
                 : '—',
             'بدون سبيسر (سنجل)',
             '$panesPerSashSet فردة (${item.glass1Name})',
             '${gw.toStringAsFixed(1)} × ${gh.toStringAsFixed(1)} سم',
             'سنجل (فردي)',
-            item.label,
+            '${item.label} (${item.unitType})',
           ]);
         } else {
           final double spacerMeters = item.totalSpacerMeters(sector);
           glassOrderRows.add([
             item.hasGeorgianBars
-                ? '${(item.georgianMetersPerWindow * item.quantity).toStringAsFixed(2)} م'
+                ? '${(item.georgianMetersPerWindow * item.quantity).toStringAsFixed(1)} م'
                 : '—',
-            '${spacerMeters.toStringAsFixed(2)} متر طولي سبيسر',
+            '${spacerMeters.toStringAsFixed(1)} م سبيسر',
             '$panesPerSashSet فردة (${item.glass1Name}) + $panesPerSashSet فردة (${item.glass2Name})',
             '${gw.toStringAsFixed(1)} × ${gh.toStringAsFixed(1)} سم',
             'دبل (مزدوج)',
-            item.label,
+            '${item.label} (${item.unitType})',
           ]);
         }
       }
     }
 
-    // حساب تقسيم الأعواد (600 سم) لكل جزء
     final List<List<String>> barSummaryRows = [];
     final double stockLen = storage.pricingSettings.defaultStockBarLengthCm;
     final double kerfMm = storage.pricingSettings.defaultSawKerfMm;
@@ -328,110 +459,64 @@ class PdfGeneratorService {
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(22),
+        margin: const pw.EdgeInsets.all(20),
         theme: pw.ThemeData.withFont(
           base: _regularFont!,
           bold: _boldFont!,
         ),
         textDirection: pw.TextDirection.rtl,
         build: (context) => [
-          pw.Container(
-            padding: const pw.EdgeInsets.all(14),
-            decoration: pw.BoxDecoration(
-              color: PdfColor.fromHex('#15803D'),
-              borderRadius: pw.BorderRadius.circular(8),
-            ),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'كشف الطلبية الشامل والتخصيم وتقطيع الزجاج والأعواد',
-                      style: pw.TextStyle(
-                        color: PdfColors.white,
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.SizedBox(height: 4),
-                    pw.Text(
-                      'طول العود القياسي: ${stockLen.toStringAsFixed(0)} سم | سُمك المنشار: ${kerfMm.toStringAsFixed(1)} مم',
-                      style: const pw.TextStyle(
-                        color: PdfColors.white,
-                        fontSize: 9.5,
-                      ),
-                    ),
-                  ],
-                ),
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.end,
-                  children: [
-                    pw.Text(
-                      'العميل: ${client.clientName}',
-                      style: pw.TextStyle(
-                        color: PdfColors.white,
-                        fontSize: 12,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'التاريخ: ${client.createdAt}',
-                      style: const pw.TextStyle(
-                        color: PdfColors.white,
-                        fontSize: 9.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+          _buildHafezHeader(
+            title: 'كشف أمر التشغيل والطلبية الشامل للورشة وتقطيع الأعواد',
+            docDate: client.createdAt,
+            client: client,
+            settings: storage.pricingSettings,
+            bannerColor: const PdfColor.fromInt(0xFF15803D),
           ),
-          pw.SizedBox(height: 14),
+          pw.SizedBox(height: 12),
 
           pw.Text(
-            'أولاً: كشف تخصيم وتقطيع أجزاء القطاعات (الحلق، الضلف، السكاكين، والإضافات):',
+            'أولاً: كشف تخصيم وتقطيع أجزاء القطاعات (الحلق، الضلف، السكاكين، والمكملات):',
             style: pw.TextStyle(
-              fontSize: 11.5,
+              fontSize: 10.5,
               fontWeight: pw.FontWeight.bold,
-              color: PdfColor.fromHex('#0F172A'),
+              color: const PdfColor.fromInt(0xFF0F172A),
             ),
           ),
-          pw.SizedBox(height: 6),
+          pw.SizedBox(height: 4),
           pw.TableHelper.fromTextArray(
             headers: [
-              'إجمالي العدد',
-              'مقاس القص الصافي',
+              'العدد الإجمالي',
+              'طول القص الصافي',
               'الفئة',
               'اسم الجزء',
               'القطاع',
-              'الشباك / البند',
+              'الفتحة / البند',
             ],
             data: partsCuttingRows,
             headerStyle: pw.TextStyle(
               color: PdfColors.white,
               fontWeight: pw.FontWeight.bold,
-              fontSize: 8.5,
+              fontSize: 8.0,
             ),
-            headerDecoration: pw.BoxDecoration(
-              color: PdfColor.fromHex('#0F172A'),
+            headerDecoration: const pw.BoxDecoration(
+              color: PdfColor.fromInt(0xFF0F172A),
             ),
-            cellStyle: const pw.TextStyle(fontSize: 8.2),
+            cellStyle: const pw.TextStyle(fontSize: 7.5),
             cellAlignment: pw.Alignment.center,
-            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.6),
+            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
           ),
-          pw.SizedBox(height: 16),
+          pw.SizedBox(height: 12),
 
           pw.Text(
             'ثانياً: كشف طلبية الزجاج (الفردي / الدبل) والسبيسر والجورجيا:',
             style: pw.TextStyle(
-              fontSize: 11.5,
+              fontSize: 10.5,
               fontWeight: pw.FontWeight.bold,
-              color: PdfColor.fromHex('#991B1B'),
+              color: const PdfColor.fromInt(0xFF7F1D1D),
             ),
           ),
-          pw.SizedBox(height: 6),
+          pw.SizedBox(height: 4),
           pw.TableHelper.fromTextArray(
             headers: [
               'أمتار الجورجيا',
@@ -439,39 +524,39 @@ class PdfGeneratorService {
               'عدد ونوع فردات الزجاج',
               'مقاس الزجاج الصافي',
               'النظام',
-              'الشباك / البند',
+              'الفتحة / البند',
             ],
             data: glassOrderRows.isNotEmpty
                 ? glassOrderRows
                 : [
-                    ['—', '—', 'لا يوجد زجاج مضاف', '—', '—', '—']
+                    ['—', '—', 'لا يوجد زجاج', '—', '—', '—']
                   ],
             headerStyle: pw.TextStyle(
               color: PdfColors.white,
               fontWeight: pw.FontWeight.bold,
-              fontSize: 8.5,
+              fontSize: 8.0,
             ),
-            headerDecoration: pw.BoxDecoration(
-              color: PdfColor.fromHex('#991B1B'),
+            headerDecoration: const pw.BoxDecoration(
+              color: PdfColor.fromInt(0xFF7F1D1D),
             ),
-            cellStyle: const pw.TextStyle(fontSize: 8.2),
+            cellStyle: const pw.TextStyle(fontSize: 7.5),
             cellAlignment: pw.Alignment.center,
-            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.6),
+            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
           ),
-          pw.SizedBox(height: 16),
+          pw.SizedBox(height: 12),
 
           pw.Text(
-            'ثالثاً: جدول تقسيم الأعواد القياسية (${stockLen.toStringAsFixed(0)} سم) وتقليل الهالك:',
+            'ثالثاً: جدول أوامر تقطيع الأعواد القياسية (${stockLen.toStringAsFixed(0)} سم) وتقليل الهالك:',
             style: pw.TextStyle(
-              fontSize: 11.5,
+              fontSize: 10.5,
               fontWeight: pw.FontWeight.bold,
-              color: PdfColor.fromHex('#15803D'),
+              color: const PdfColor.fromInt(0xFF15803D),
             ),
           ),
-          pw.SizedBox(height: 6),
+          pw.SizedBox(height: 4),
           pw.TableHelper.fromTextArray(
             headers: [
-              'الفضلة المتبقية (الهالك)',
+              'الفضلة (الهالك)',
               'توزيع القطعيات داخل العود (سم)',
               'رقم العود',
               'القطاع والجزء',
@@ -480,14 +565,14 @@ class PdfGeneratorService {
             headerStyle: pw.TextStyle(
               color: PdfColors.white,
               fontWeight: pw.FontWeight.bold,
-              fontSize: 8.5,
+              fontSize: 8.0,
             ),
-            headerDecoration: pw.BoxDecoration(
-              color: PdfColor.fromHex('#15803D'),
+            headerDecoration: const pw.BoxDecoration(
+              color: PdfColor.fromInt(0xFF15803D),
             ),
-            cellStyle: const pw.TextStyle(fontSize: 8.2),
+            cellStyle: const pw.TextStyle(fontSize: 7.5),
             cellAlignment: pw.Alignment.center,
-            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.6),
+            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
           ),
         ],
       ),
@@ -496,25 +581,86 @@ class PdfGeneratorService {
     return pdf.save();
   }
 
+  /// رسم كروكي معماري لفتحة الشباك / الباب داخل ملف الـ PDF
+  static void _drawPdfWindowSchema(
+    PdfGraphics canvas,
+    PdfPoint size,
+    double wCm,
+    double hCm,
+    int sashes,
+    String openType,
+    String barType,
+    bool georgian,
+    bool dblGlass,
+  ) {
+    final double aspect = wCm / (hCm > 0 ? hCm : 1);
+    double dW = size.x;
+    double dH = dW / aspect;
+    if (dH > size.y) {
+      dH = size.y;
+      dW = dH * aspect;
+    }
+    final double sX = (size.x - dW) / 2;
+    final double sY = (size.y - dH) / 2;
+
+    // بار خارجي
+    if (barType != 'بدون بار') {
+      canvas.setColor(const PdfColor.fromInt(0xFFD97706));
+      canvas.drawRect(sX - 1.5, sY - 1.5, dW + 3, dH + 3);
+      canvas.strokePath();
+    }
+
+    // الحلق
+    canvas.setColor(const PdfColor.fromInt(0xFFCBD5E1));
+    canvas.drawRect(sX, sY, dW, dH);
+    canvas.fillPath();
+    canvas.setColor(const PdfColor.fromInt(0xFF334155));
+    canvas.drawRect(sX, sY, dW, dH);
+    canvas.strokePath();
+
+    // الضلف
+    final int safeS = sashes > 0 ? sashes : 1;
+    final double sashW = (dW - 4) / safeS;
+    for (int i = 0; i < safeS; i++) {
+      final double sx = sX + 2 + (i * sashW);
+      canvas.setColor(const PdfColor.fromInt(0xFFF1F5F9));
+      canvas.drawRect(sx, sY + 2, sashW, dH - 4);
+      canvas.fillPath();
+
+      // زجاج
+      canvas.setColor(dblGlass ? const PdfColor.fromInt(0xFF0284C7) : const PdfColor.fromInt(0xFF38BDF8));
+      canvas.drawRect(sx + 2, sY + 4, sashW - 4, dH - 8);
+      canvas.strokePath();
+
+      // جورجيا
+      if (georgian) {
+        canvas.setColor(const PdfColor.fromInt(0xFFFDE68A));
+        canvas.drawLine(sx + 2, sY + dH * 0.5, sx + sashW - 2, sY + dH * 0.5);
+        canvas.drawLine(sx + sashW * 0.5, sY + 4, sx + sashW * 0.5, sY + dH - 4);
+        canvas.strokePath();
+      }
+    }
+  }
+
   static pw.Widget _summaryRow(String title, String val, {bool isBold = false}) {
     return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 2.5),
+      padding: const pw.EdgeInsets.symmetric(vertical: 2.0),
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
           pw.Text(
             title,
             style: pw.TextStyle(
-              fontSize: isBold ? 11 : 9.5,
+              fontSize: isBold ? 10.0 : 8.8,
               fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
             ),
           ),
           pw.Text(
             val,
             style: pw.TextStyle(
-              fontSize: isBold ? 11.5 : 9.5,
+              fontSize: isBold ? 10.5 : 8.8,
               fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
-              color: isBold ? PdfColor.fromHex('#991B1B') : PdfColors.black,
+              color: isBold ? const PdfColor.fromInt(0xFF7F1D1D) : PdfColors.black,
             ),
           ),
         ],
@@ -522,7 +668,26 @@ class PdfGeneratorService {
     );
   }
 
-  /// حفظ ومشاركة ملفي الـ PDF معاً (عرض السعر + كشف الطلبية)
+  static Future<String> savePdfToDeviceStorage({
+    required Uint8List bytes,
+    required String fileName,
+  }) async {
+    Directory? dir;
+    if (Platform.isAndroid) {
+      dir = Directory('/storage/emulated/0/Download');
+      if (!dir.existsSync()) {
+        dir = await getExternalStorageDirectory();
+      }
+    } else {
+      dir = await getApplicationDocumentsDirectory();
+    }
+    dir ??= await getTemporaryDirectory();
+
+    final file = File('${dir.path}/$fileName');
+    await file.writeAsBytes(bytes, flush: true);
+    return file.path;
+  }
+
   static Future<void> generateAndShareBothPdfs({
     required ClientRecord client,
     required WorkshopStorage storage,
@@ -532,23 +697,24 @@ class PdfGeneratorService {
     final orderBytes =
         await buildOrderAndCuttingPdfBytes(client: client, storage: storage);
 
-    final dir = await getTemporaryDirectory();
     final safeName =
         client.clientName.replaceAll(RegExp(r'[^\w\u0600-\u06FF]+'), '_');
-    final quoteFile = File('${dir.path}/عرض_سعر_$safeName.pdf');
-    final orderFile = File('${dir.path}/كشف_طلبية_وتخصيم_$safeName.pdf');
-
-    await quoteFile.writeAsBytes(quoteBytes);
-    await orderFile.writeAsBytes(orderBytes);
+    final quotePath = await savePdfToDeviceStorage(
+      bytes: quoteBytes,
+      fileName: 'عرض_سعر_شركة_الحافظ_$safeName.pdf',
+    );
+    final orderPath = await savePdfToDeviceStorage(
+      bytes: orderBytes,
+      fileName: 'كشف_طلبية_شركة_الحافظ_$safeName.pdf',
+    );
 
     await Share.shareXFiles(
-      [XFile(quoteFile.path), XFile(orderFile.path)],
+      [XFile(quotePath), XFile(orderPath)],
       text:
-          'مرفق ملفي PDF للعميل (${client.clientName}):\n1. كشف عرض السعر\n2. كشف الطلبية والتخصيم وتقطيع الزجاج والأعواد',
+          'مرفق ملفي PDF معتمدين من شركة الحافظ للعميل (${client.clientName}):\n1. كشف عرض السعر بالرسم الهندسي والمقاسات\n2. كشف الطلبية والتخصيم وتقطيع الزجاج والأعواد\n(تم حفظ الملفين أيضاً في مجلد Download بالجهاز)',
     );
   }
 
-  /// معاينة وطباعة أي ملف PDF مباشرة على الهاتف
   static Future<void> previewPdfBytes(Uint8List bytes, String fileName) async {
     await Printing.layoutPdf(
       onLayout: (_) async => bytes,
