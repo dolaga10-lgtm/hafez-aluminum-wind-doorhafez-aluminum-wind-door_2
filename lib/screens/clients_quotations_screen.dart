@@ -413,6 +413,29 @@ class _ClientQuotationEditorPageState extends State<ClientQuotationEditorPage>
     final georgianMetersCtrl = TextEditingController(
         text: existing != null ? existing.georgianMetersPerWindow.toString() : '3.0');
 
+    // إعدادات التكوين المعماري المتقدم (الثوابت والشفاط)
+    bool hasTopFixed = existing?.hasTopFixed ?? false;
+    final topFixedCtrl = TextEditingController(
+        text: existing != null ? existing.topFixedHeightCm.toString() : '40.0');
+
+    bool hasBottomFixed = existing?.hasBottomFixed ?? false;
+    final bottomFixedCtrl = TextEditingController(
+        text: existing != null ? existing.bottomFixedHeightCm.toString() : '40.0');
+
+    bool hasRightFixed = existing?.hasRightFixed ?? false;
+    final rightFixedCtrl = TextEditingController(
+        text: existing != null ? existing.rightFixedWidthCm.toString() : '40.0');
+
+    bool hasLeftFixed = existing?.hasLeftFixed ?? false;
+    final leftFixedCtrl = TextEditingController(
+        text: existing != null ? existing.leftFixedWidthCm.toString() : '40.0');
+
+    bool hasExhaustFan = existing?.hasExhaustFan ?? false;
+    String exhaustFanShape = existing?.exhaustFanShape ?? 'دائري';
+    final exhaustFanDiameterCtrl = TextEditingController(
+        text: existing != null ? existing.exhaustFanDiameterCm.toString() : '25.0');
+    String exhaustFanPosition = existing?.exhaustFanPosition ?? 'في الثابت العلوي';
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -469,12 +492,116 @@ class _ClientQuotationEditorPageState extends State<ClientQuotationEditorPage>
                           sashCount: sashCount,
                           barType: barType,
                           openDirection: openDirection,
+                          hasTopFixed: hasTopFixed,
+                          topFixedHeightCm: double.tryParse(topFixedCtrl.text.trim()) ?? 40.0,
+                          hasBottomFixed: hasBottomFixed,
+                          bottomFixedHeightCm: double.tryParse(bottomFixedCtrl.text.trim()) ?? 40.0,
+                          hasRightFixed: hasRightFixed,
+                          rightFixedWidthCm: double.tryParse(rightFixedCtrl.text.trim()) ?? 40.0,
+                          hasLeftFixed: hasLeftFixed,
+                          leftFixedWidthCm: double.tryParse(leftFixedCtrl.text.trim()) ?? 40.0,
+                          hasExhaustFan: hasExhaustFan,
+                          exhaustFanShape: exhaustFanShape,
+                          exhaustFanDiameterCm: double.tryParse(exhaustFanDiameterCtrl.text.trim()) ?? 25.0,
+                          exhaustFanPosition: exhaustFanPosition,
                           hasGlass: hasGlass,
                           isDoubleGlass: isDoubleGlass,
                           hasGeorgian: hasGeorgian,
-                          height: 210,
+                          height: 220,
                         ),
                         const SizedBox(height: 12),
+
+                        // أزرار التحكم السريع في اتجاهات الثوابت والشفاط
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFFCBD5E1)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'إضافة ثوابت الفتحة المعمارية (انقر للإضافة الفورية):',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Color(0xFF1E293B)),
+                              ),
+                              const SizedBox(height: 6),
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: [
+                                    FilterChip(
+                                      selected: hasTopFixed,
+                                      selectedColor: const Color(0xFFD97706),
+                                      checkmarkColor: Colors.white,
+                                      labelStyle: TextStyle(
+                                        color: hasTopFixed ? Colors.white : const Color(0xFF1B110A),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                      label: const Text('⬆️ ثابت فوق'),
+                                      onSelected: (v) => setModalState(() => hasTopFixed = v),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    FilterChip(
+                                      selected: hasBottomFixed,
+                                      selectedColor: const Color(0xFFD97706),
+                                      checkmarkColor: Colors.white,
+                                      labelStyle: TextStyle(
+                                        color: hasBottomFixed ? Colors.white : const Color(0xFF1B110A),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                      label: const Text('⬇️ ثابت تحت'),
+                                      onSelected: (v) => setModalState(() => hasBottomFixed = v),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    FilterChip(
+                                      selected: hasRightFixed,
+                                      selectedColor: const Color(0xFFD97706),
+                                      checkmarkColor: Colors.white,
+                                      labelStyle: TextStyle(
+                                        color: hasRightFixed ? Colors.white : const Color(0xFF1B110A),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                      label: const Text('➡️ ثابت يمين'),
+                                      onSelected: (v) => setModalState(() => hasRightFixed = v),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    FilterChip(
+                                      selected: hasLeftFixed,
+                                      selectedColor: const Color(0xFFD97706),
+                                      checkmarkColor: Colors.white,
+                                      labelStyle: TextStyle(
+                                        color: hasLeftFixed ? Colors.white : const Color(0xFF1B110A),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                      label: const Text('⬅️ ثابت شمال'),
+                                      onSelected: (v) => setModalState(() => hasLeftFixed = v),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    FilterChip(
+                                      selected: hasExhaustFan,
+                                      selectedColor: const Color(0xFFB91C1C),
+                                      checkmarkColor: Colors.white,
+                                      labelStyle: TextStyle(
+                                        color: hasExhaustFan ? Colors.white : const Color(0xFF1B110A),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                      label: const Text('🌀 فتحة شفاط'),
+                                      onSelected: (v) => setModalState(() => hasExhaustFan = v),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 10),
 
                         // مؤشر المساحة والسعر الفوري للمتر
                         Container(
@@ -753,6 +880,170 @@ class _ClientQuotationEditorPageState extends State<ClientQuotationEditorPage>
                   ),
                 ),
 
+                        const Divider(height: 22),
+                        const Text(
+                          'التكوين المعماري المتقدم (الثوابت والشفاط):',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1B110A)),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // ثابت علوي
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('ثابت علوي (جلسة علوية)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                          subtitle: const Text('تقسيم الفتحة بجزء ثابت في الأعلى ومتحرك بالأسفل', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                          value: hasTopFixed,
+                          onChanged: (v) => setModalState(() => hasTopFixed = v),
+                        ),
+                        if (hasTopFixed)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: TextField(
+                              controller: topFixedCtrl,
+                              keyboardType: TextInputType.number,
+                              onChanged: (_) => setModalState(() {}),
+                              decoration: const InputDecoration(
+                                labelText: 'ارتفاع الثابت العلوي (سم)',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+
+                        // ثابت سفلي
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('ثابت سفلي (جلسة سفلية)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                          value: hasBottomFixed,
+                          onChanged: (v) => setModalState(() => hasBottomFixed = v),
+                        ),
+                        if (hasBottomFixed)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: TextField(
+                              controller: bottomFixedCtrl,
+                              keyboardType: TextInputType.number,
+                              onChanged: (_) => setModalState(() {}),
+                              decoration: const InputDecoration(
+                                labelText: 'ارتفاع الثابت السفلي (سم)',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+
+                        // ثوابت جانبية (يمين / شمال)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: const Text('ثابت يمين', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                                value: hasRightFixed,
+                                onChanged: (v) => setModalState(() => hasRightFixed = v),
+                              ),
+                            ),
+                            Expanded(
+                              child: SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: const Text('ثابت شمال', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                                value: hasLeftFixed,
+                                onChanged: (v) => setModalState(() => hasLeftFixed = v),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (hasRightFixed || hasLeftFixed) ...[
+                          Row(
+                            children: [
+                              if (hasRightFixed)
+                                Expanded(
+                                  child: TextField(
+                                    controller: rightFixedCtrl,
+                                    keyboardType: TextInputType.number,
+                                    onChanged: (_) => setModalState(() {}),
+                                    decoration: const InputDecoration(
+                                      labelText: 'عرض ثابت يمين (سم)',
+                                      border: OutlineInputBorder(),
+                                      isDense: true,
+                                    ),
+                                  ),
+                                ),
+                              if (hasRightFixed && hasLeftFixed) const SizedBox(width: 8),
+                              if (hasLeftFixed)
+                                Expanded(
+                                  child: TextField(
+                                    controller: leftFixedCtrl,
+                                    keyboardType: TextInputType.number,
+                                    onChanged: (_) => setModalState(() {}),
+                                    decoration: const InputDecoration(
+                                      labelText: 'عرض ثابت شمال (سم)',
+                                      border: OutlineInputBorder(),
+                                      isDense: true,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+
+                        // فتحة الشفاط (Exhaust Fan)
+                        const Divider(height: 18),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('إضافة فتحة شفاط (للمطابخ والحمامات)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFFB91C1C))),
+                          subtitle: const Text('تفريغ فتحة دائرية أو مربعة لتركيب الشفاط', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                          value: hasExhaustFan,
+                          onChanged: (v) => setModalState(() => hasExhaustFan = v),
+                        ),
+                        if (hasExhaustFan) ...[
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: exhaustFanShape,
+                                  decoration: const InputDecoration(labelText: 'شكل الشفاط', border: OutlineInputBorder(), isDense: true),
+                                  items: const [
+                                    DropdownMenuItem(value: 'دائري', child: Text('دائري ⭕')),
+                                    DropdownMenuItem(value: 'مربع', child: Text('مربع ⏹️')),
+                                  ],
+                                  onChanged: (v) {
+                                    if (v != null) setModalState(() => exhaustFanShape = v);
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: TextField(
+                                  controller: exhaustFanDiameterCtrl,
+                                  keyboardType: TextInputType.number,
+                                  onChanged: (_) => setModalState(() {}),
+                                  decoration: const InputDecoration(
+                                    labelText: 'القطر / الضلع (سم)',
+                                    border: OutlineInputBorder(),
+                                    isDense: true,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            value: exhaustFanPosition,
+                            decoration: const InputDecoration(labelText: 'موضع فتحة الشفاط', border: OutlineInputBorder(), isDense: true),
+                            items: const [
+                              DropdownMenuItem(value: 'في الثابت العلوي', child: Text('في الثابت العلوي')),
+                              DropdownMenuItem(value: 'في الدرفة يمين', child: Text('في الدرفة يمين')),
+                              DropdownMenuItem(value: 'في الدرفة شمال', child: Text('في الدرفة شمال')),
+                            ],
+                            onChanged: (v) {
+                              if (v != null) setModalState(() => exhaustFanPosition = v);
+                            },
+                          ),
+                        ],
+                        const SizedBox(height: 14),
+
                 // زر تأكيد الإضافة لتنزل الفتحة فوراً في القائمة العلوية
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -771,6 +1062,12 @@ class _ClientQuotationEditorPageState extends State<ClientQuotationEditorPage>
                         final q = int.tryParse(qtyCtrl.text.trim()) ?? 1;
                         final geoM = double.tryParse(georgianMetersCtrl.text.trim()) ?? 0.0;
 
+                        final tfH = double.tryParse(topFixedCtrl.text.trim()) ?? 40.0;
+                        final bfH = double.tryParse(bottomFixedCtrl.text.trim()) ?? 40.0;
+                        final rfW = double.tryParse(rightFixedCtrl.text.trim()) ?? 40.0;
+                        final lfW = double.tryParse(leftFixedCtrl.text.trim()) ?? 40.0;
+                        final fanD = double.tryParse(exhaustFanDiameterCtrl.text.trim()) ?? 25.0;
+
                         final newItem = ClientWindowItem(
                           id: existing?.id ?? 'item_${DateTime.now().millisecondsSinceEpoch}',
                           label: labelCtrl.text.trim().isEmpty ? '$unitType $openType' : labelCtrl.text.trim(),
@@ -778,6 +1075,18 @@ class _ClientQuotationEditorPageState extends State<ClientQuotationEditorPage>
                           openType: openType,
                           barType: barType,
                           openDirection: openDirection,
+                          hasTopFixed: hasTopFixed,
+                          topFixedHeightCm: tfH,
+                          hasBottomFixed: hasBottomFixed,
+                          bottomFixedHeightCm: bfH,
+                          hasRightFixed: hasRightFixed,
+                          rightFixedWidthCm: rfW,
+                          hasLeftFixed: hasLeftFixed,
+                          leftFixedWidthCm: lfW,
+                          hasExhaustFan: hasExhaustFan,
+                          exhaustFanShape: exhaustFanShape,
+                          exhaustFanDiameterCm: fanD,
+                          exhaustFanPosition: exhaustFanPosition,
                           sectorId: selectedSector.id,
                           sectorName: selectedSector.name,
                           sectorPricePerM2: selectedSector.pricePerSquareMeter,
@@ -1048,6 +1357,18 @@ class _ClientQuotationEditorPageState extends State<ClientQuotationEditorPage>
                         sashCount: item.sashCount,
                         barType: item.barType,
                         openDirection: item.openDirection,
+                        hasTopFixed: item.hasTopFixed,
+                        topFixedHeightCm: item.topFixedHeightCm,
+                        hasBottomFixed: item.hasBottomFixed,
+                        bottomFixedHeightCm: item.bottomFixedHeightCm,
+                        hasRightFixed: item.hasRightFixed,
+                        rightFixedWidthCm: item.rightFixedWidthCm,
+                        hasLeftFixed: item.hasLeftFixed,
+                        leftFixedWidthCm: item.leftFixedWidthCm,
+                        hasExhaustFan: item.hasExhaustFan,
+                        exhaustFanShape: item.exhaustFanShape,
+                        exhaustFanDiameterCm: item.exhaustFanDiameterCm,
+                        exhaustFanPosition: item.exhaustFanPosition,
                         hasGlass: item.hasGlass,
                         isDoubleGlass: item.isDoubleGlass,
                         hasGeorgian: item.hasGeorgianBars,

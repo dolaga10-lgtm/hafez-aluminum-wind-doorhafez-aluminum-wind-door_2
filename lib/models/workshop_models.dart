@@ -1,78 +1,56 @@
-import 'dart:convert';
 import 'dart:math' as math;
 
-/// يمثل جزءاً داخل القطاع (سكينة، حلق، ضلفة، مكمل، تقابل، باكتة، محبس، أو أي مسمى مخصص)
+/// جزء أو قطعة من مكونات القطاع (حلق، درفة، سكينة، باكتة، محبس، إلخ)
 class SectorPart {
   String id;
-  String name; // اسم الجزء الحر (سكينة، حلق، ضلفة، مكمل، تقابل، باكتة، محبس...)
-  String role; // تصنيف الجزء: حلق | ضلفة | سكينة | مكمل | تقابل | باكتة | محبس | إضافي
-  String dimensionBasis; // width | height | width_per_sash | height_per_sash | fixed
-  double offsetCm; // قيمة التخصيم أو الإضافة بالسنتيمتر (سالب للخصم، موجب للإضافة)
-  int quantityPerWindow; // كم قطعة تضاف للشباك/الباب
-  bool multiplyBySashes; // هل يُضرب العدد في عدد الضلف؟
+  String name; // اسم القطعة (مثال: سكينة تداخل، حلق علوي وسفلي، قائم درفة، مكمل...)
+  String role; // حلق | درفة | سكينة | سلك | باكتة | مكمل | مخصص
+  String dimensionBasis; // width | height | width_per_sash | perimeter
+  double deductFromWidthCm; // التخصيم من العرض (سم)
+  double deductFromHeightCm; // التخصيم من الارتفاع (سم)
+  int multiplier; // كم قطعة لكل درفة أو لكل شباك (1، 2، 4...)
+  double addPerSashCm; // إضافة تداخل بالسم
 
   SectorPart({
     required this.id,
     required this.name,
     required this.role,
     required this.dimensionBasis,
-    required this.offsetCm,
-    required this.quantityPerWindow,
-    this.multiplyBySashes = false,
+    this.deductFromWidthCm = 0.0,
+    this.deductFromHeightCm = 0.0,
+    this.multiplier = 1,
+    this.addPerSashCm = 0.0,
   });
 
-  /// حساب طول القطعة الواحدة بالسنتيمتر بناءً على أبعاد الشباك/الباب وعدد الضلف
-  double calculatePieceLength(double widthCm, double heightCm, int sashCount) {
+  /// حساب طول القص الصافي للقطعة بناءً على مقاسات الشباك وعدد الدلف
+  double calculatePieceLength(double windowWidthCm, double windowHeightCm, int sashCount) {
     final int safeSashes = sashCount > 0 ? sashCount : 1;
-    double baseVal = 0.0;
+    double rawLength = 0.0;
+
     switch (dimensionBasis) {
       case 'width':
-        baseVal = widthCm;
+        rawLength = windowWidthCm - deductFromWidthCm;
         break;
       case 'height':
-        baseVal = heightCm;
+        rawLength = windowHeightCm - deductFromHeightCm;
         break;
       case 'width_per_sash':
-        baseVal = widthCm / safeSashes;
+        rawLength = ((windowWidthCm - deductFromWidthCm) / safeSashes) + addPerSashCm;
         break;
-      case 'height_per_sash':
-        baseVal = heightCm / safeSashes;
-        break;
-      case 'fixed':
-        baseVal = 0.0;
+      case 'perimeter':
+        rawLength = (2 * (windowWidthCm - deductFromWidthCm)) + (2 * (windowHeightCm - deductFromHeightCm));
         break;
       default:
-        baseVal = widthCm;
+        rawLength = windowWidthCm;
     }
-    final double result = baseVal + offsetCm;
-    return result > 0 ? double.parse(result.toStringAsFixed(2)) : 0.0;
+    return math.max(0.0, double.parse(rawLength.toStringAsFixed(2)));
   }
 
-  /// حساب إجمالي عدد القطع لهذا الجزء
-  int calculateTotalCount(int windowQuantity, int sashCount) {
-    final int safeWindows = windowQuantity > 0 ? windowQuantity : 1;
-    final int safeSashes = sashCount > 0 ? sashCount : 1;
-    final int perWindow = multiplyBySashes
-        ? (quantityPerWindow * safeSashes)
-        : quantityPerWindow;
-    return perWindow * safeWindows;
-  }
-
-  String get basisArabicLabel {
-    switch (dimensionBasis) {
-      case 'width':
-        return 'العرض الكلي (W)';
-      case 'height':
-        return 'الارتفاع الكلي (H)';
-      case 'width_per_sash':
-        return 'العرض ÷ عدد الضلف';
-      case 'height_per_sash':
-        return 'الارتفاع ÷ عدد الضلف';
-      case 'fixed':
-        return 'طول ثابت (سم)';
-      default:
-        return 'العرض الكلي (W)';
+  int calculateTotalPieces(int sashCount) {
+    if (role == 'درفة' || role == 'سكينة' || dimensionBasis == 'width_per_sash') {
+      return (sashCount > 0 ? sashCount : 1) * multiplier;
     }
+    return multiplier;
   }
 
   Map<String, dynamic> toJson() => {
@@ -80,33 +58,35 @@ class SectorPart {
         'name': name,
         'role': role,
         'dimensionBasis': dimensionBasis,
-        'offsetCm': offsetCm,
-        'quantityPerWindow': quantityPerWindow,
-        'multiplyBySashes': multiplyBySashes,
+        'deductFromWidthCm': deductFromWidthCm,
+        'deductFromHeightCm': deductFromHeightCm,
+        'multiplier': multiplier,
+        'addPerSashCm': addPerSashCm,
       };
 
   factory SectorPart.fromJson(Map<String, dynamic> json) => SectorPart(
-        id: json['id']?.toString() ?? '',
-        name: json['name']?.toString() ?? '',
-        role: json['role']?.toString() ?? 'جزء مخصص',
-        dimensionBasis: json['dimensionBasis']?.toString() ?? 'width',
-        offsetCm: (json['offsetCm'] as num?)?.toDouble() ?? 0.0,
-        quantityPerWindow: (json['quantityPerWindow'] as num?)?.toInt() ?? 1,
-        multiplyBySashes: json['multiplyBySashes'] == true,
+        id: json['id'] ?? '',
+        name: json['name'] ?? '',
+        role: json['role'] ?? 'مخصص',
+        dimensionBasis: json['dimensionBasis'] ?? 'width',
+        deductFromWidthCm: (json['deductFromWidthCm'] as num?)?.toDouble() ?? 0.0,
+        deductFromHeightCm: (json['deductFromHeightCm'] as num?)?.toDouble() ?? 0.0,
+        multiplier: json['multiplier'] ?? 1,
+        addPerSashCm: (json['addPerSashCm'] as num?)?.toDouble() ?? 0.0,
       );
 }
 
-/// يمثل قطاع ألومنيوم أو uPVC أو باب أو شباك أو مطبخ
+/// ملف تعريف القطاع (Sector Profile)
 class SectorProfile {
   String id;
   String name;
   String companyGroup; // الشارقة | السعد PS | الدولية ماكسيم | ألوميل | فولكانو | فالف | uPVC | مطابخ | مخصص
   String systemType; // شباك جرار | باب جرار | شباك مفصلي | باب مفصلي | قلاب | مطبخ | مخصص
   int defaultSashCount;
-  String? imagePath; // مسار صورة القطاع المرفوعة
-  double pricePerSquareMeter; // سعر المتر المربع في التسعير الخارجي
-  double glassWidthDeductCm; // خصم عرض الزجاج من عرض الضلفة (سم)
-  double glassHeightDeductCm; // خصم ارتفاع الزجاج من ارتفاع الضلفة (سم)
+  String? imagePath;
+  double pricePerSquareMeter;
+  double glassWidthDeductCm;
+  double glassHeightDeductCm;
   bool isCustom;
   List<SectorPart> parts;
   String get category => companyGroup;
@@ -131,9 +111,10 @@ class SectorProfile {
 
   double calculateSingleSashWidth(double widthCm, int sashCount) {
     for (final p in parts) {
-      if (p.role == 'ضلفة' &&
-          (p.dimensionBasis == 'width_per_sash' || p.dimensionBasis == 'width')) {
-        return p.calculatePieceLength(widthCm, 0, sashCount);
+      if (p.role == 'درفة' || p.role == 'ضلفة') {
+        if (p.dimensionBasis == 'width_per_sash' || p.dimensionBasis == 'width') {
+          return p.calculatePieceLength(widthCm, 0, sashCount);
+        }
       }
     }
     final int safeSashes = sashCount > 0 ? sashCount : 1;
@@ -142,7 +123,7 @@ class SectorProfile {
 
   double calculateSingleSashHeight(double heightCm, int sashCount) {
     for (final p in parts) {
-      if (p.role == 'ضلفة' && p.dimensionBasis == 'height') {
+      if ((p.role == 'درفة' || p.role == 'ضلفة') && p.dimensionBasis == 'height') {
         return p.calculatePieceLength(0, heightCm, sashCount);
       }
     }
@@ -174,52 +155,57 @@ class SectorProfile {
       };
 
   factory SectorProfile.fromJson(Map<String, dynamic> json) => SectorProfile(
-        id: json['id']?.toString() ?? '',
-        name: json['name']?.toString() ?? '',
-        companyGroup: json['companyGroup']?.toString() ?? 'مخصص',
-        systemType: json['systemType']?.toString() ?? 'شباك جرار',
-        defaultSashCount: (json['defaultSashCount'] as num?)?.toInt() ?? 2,
-        imagePath: json['imagePath']?.toString(),
-        pricePerSquareMeter:
-            (json['pricePerSquareMeter'] as num?)?.toDouble() ?? 2200.0,
-        glassWidthDeductCm:
-            (json['glassWidthDeductCm'] as num?)?.toDouble() ?? 11.4,
-        glassHeightDeductCm:
-            (json['glassHeightDeductCm'] as num?)?.toDouble() ?? 11.4,
-        isCustom: json['isCustom'] == true,
-        parts: (json['parts'] as List<dynamic>? ?? [])
-            .map((e) => SectorPart.fromJson(Map<String, dynamic>.from(e)))
-            .toList(),
+        id: json['id'] ?? '',
+        name: json['name'] ?? '',
+        companyGroup: json['companyGroup'] ?? 'عام',
+        systemType: json['systemType'] ?? 'شباك جرار',
+        defaultSashCount: json['defaultSashCount'] ?? 2,
+        imagePath: json['imagePath'],
+        pricePerSquareMeter: (json['pricePerSquareMeter'] as num?)?.toDouble() ?? 2500.0,
+        glassWidthDeductCm: (json['glassWidthDeductCm'] as num?)?.toDouble() ?? 11.4,
+        glassHeightDeductCm: (json['glassHeightDeductCm'] as num?)?.toDouble() ?? 11.4,
+        isCustom: json['isCustom'] ?? false,
+        parts: (json['parts'] as List<dynamic>?)
+                ?.map((e) => SectorPart.fromJson(Map<String, dynamic>.from(e)))
+                .toList() ??
+            [],
       );
 }
 
-/// يمثل نوع زجاج في قائمة التسعير
+/// نوع الزجاج في قائمة التسعير
 class GlassTypeItem {
   String id;
   String name;
   double pricePerSquareMeter;
+  String thickness;
+  String color;
 
   GlassTypeItem({
     required this.id,
     required this.name,
     required this.pricePerSquareMeter,
+    this.thickness = '6 مم',
+    this.color = 'شفاف',
   });
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
         'pricePerSquareMeter': pricePerSquareMeter,
+        'thickness': thickness,
+        'color': color,
       };
 
   factory GlassTypeItem.fromJson(Map<String, dynamic> json) => GlassTypeItem(
-        id: json['id']?.toString() ?? '',
-        name: json['name']?.toString() ?? '',
-        pricePerSquareMeter:
-            (json['pricePerSquareMeter'] as num?)?.toDouble() ?? 450.0,
+        id: json['id'] ?? '',
+        name: json['name'] ?? '',
+        pricePerSquareMeter: (json['pricePerSquareMeter'] as num?)?.toDouble() ?? 450.0,
+        thickness: json['thickness'] ?? '6 مم',
+        color: json['color'] ?? 'شفاف',
       );
 }
 
-/// إعدادات التسعير وطبعة شركة الحافظ
+/// إعدادات التسعير والورشة
 class PricingSettings {
   double doubleSpacerPricePerMeter;
   double georgianBarPricePerMeter;
@@ -268,23 +254,22 @@ class PricingSettings {
             (json['georgianBarPricePerMeter'] as num?)?.toDouble() ?? 85.0,
         defaultStockBarLengthCm:
             (json['defaultStockBarLengthCm'] as num?)?.toDouble() ?? 600.0,
-        defaultSawKerfMm:
-            (json['defaultSawKerfMm'] as num?)?.toDouble() ?? 4.0,
-        enforceMinimumOneSquareMeter:
-            json['enforceMinimumOneSquareMeter'] == true,
-        companyName: json['companyName']?.toString() ?? 'شركة الحافظ',
-        companySubtitle: json['companySubtitle']?.toString() ??
+        defaultSawKerfMm: (json['defaultSawKerfMm'] as num?)?.toDouble() ?? 4.0,
+        enforceMinimumOneSquareMeter: json['enforceMinimumOneSquareMeter'] ?? false,
+        companyName: json['companyName'] ?? 'شركة الحافظ',
+        companySubtitle: json['companySubtitle'] ??
             'للمطابخ الألومنيوم والخشب وجميع أعمال الأخشاب والواجهات الزجاجية (خبرة منذ 1980)',
-        companyPhones: json['companyPhones']?.toString() ?? '01000000000',
-        companyAddress: json['companyAddress']?.toString() ?? 'مصر',
-        termsAndConditions: json['termsAndConditions']?.toString() ?? '',
+        companyPhones: json['companyPhones'] ?? '01000000000 - 01200000000',
+        companyAddress: json['companyAddress'] ?? 'جمهورية مصر العربية',
+        termsAndConditions: json['termsAndConditions'] ??
+            'الأسعار شاملة التوريد والتركيب والضمان المعتمد من شركة الحافظ.',
       );
 }
 
-/// بند شباك / باب / مطبخ داخل مقايسة العميل شامل البار واتجاه الفتح والمعاينة الهندسية
+/// عنصر شباك أو باب مقايسة العميل مع التكوين المعماري المتقدم
 class ClientWindowItem {
   String id;
-  String label; // وصف الفتحة (شباك صالة، باب بلكونة، باب مطبخ، إلخ)
+  String label; // وصف الفتحة (شباك صالة، باب بلكونة، مطبخ، إلخ)
   String unitType; // شباك | باب | مطبخ
   String openType; // جرار | مفصلي | قلاب | ثابت
   String barType; // بار عادي | بار مقلوب | بدون بار
@@ -296,6 +281,20 @@ class ClientWindowItem {
   double heightCm;
   int quantity;
   int sashCount;
+
+  // الخصائص المعمارية المتقدمة (الثوابت والشفاط)
+  bool hasTopFixed;
+  double topFixedHeightCm;
+  bool hasBottomFixed;
+  double bottomFixedHeightCm;
+  bool hasRightFixed;
+  double rightFixedWidthCm;
+  bool hasLeftFixed;
+  double leftFixedWidthCm;
+  bool hasExhaustFan;
+  String exhaustFanShape; // دائري | مربع
+  double exhaustFanDiameterCm;
+  String exhaustFanPosition; // في الثابت العلوي | في الدرفة يمين | في الدرفة شمال
 
   // إعدادات الزجاج
   bool hasGlass;
@@ -327,6 +326,18 @@ class ClientWindowItem {
     required this.heightCm,
     this.quantity = 1,
     this.sashCount = 2,
+    this.hasTopFixed = false,
+    this.topFixedHeightCm = 40.0,
+    this.hasBottomFixed = false,
+    this.bottomFixedHeightCm = 40.0,
+    this.hasRightFixed = false,
+    this.rightFixedWidthCm = 40.0,
+    this.hasLeftFixed = false,
+    this.leftFixedWidthCm = 40.0,
+    this.hasExhaustFan = false,
+    this.exhaustFanShape = 'دائري',
+    this.exhaustFanDiameterCm = 25.0,
+    this.exhaustFanPosition = 'في الثابت العلوي',
     this.hasGlass = true,
     this.isDoubleGlass = false,
     this.glass1Id,
@@ -399,6 +410,17 @@ class ClientWindowItem {
     return 'دبل: ($glass1Name + $glass2Name + سبيسر)';
   }
 
+  String get configurationSummary {
+    final List<String> list = [];
+    list.add('$unitType $openType $sashCount درفة');
+    if (hasTopFixed) list.add('ثابت علوي ($topFixedHeightCm سم)');
+    if (hasBottomFixed) list.add('ثابت سفلي ($bottomFixedHeightCm سم)');
+    if (hasRightFixed) list.add('ثابت يمين ($rightFixedWidthCm سم)');
+    if (hasLeftFixed) list.add('ثابت شمال ($leftFixedWidthCm سم)');
+    if (hasExhaustFan) list.add('فتحة شفاط $exhaustFanShape ($exhaustFanDiameterCm سم)');
+    return list.join(' • ');
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'label': label,
@@ -413,6 +435,18 @@ class ClientWindowItem {
         'heightCm': heightCm,
         'quantity': quantity,
         'sashCount': sashCount,
+        'hasTopFixed': hasTopFixed,
+        'topFixedHeightCm': topFixedHeightCm,
+        'hasBottomFixed': hasBottomFixed,
+        'bottomFixedHeightCm': bottomFixedHeightCm,
+        'hasRightFixed': hasRightFixed,
+        'rightFixedWidthCm': rightFixedWidthCm,
+        'hasLeftFixed': hasLeftFixed,
+        'leftFixedWidthCm': leftFixedWidthCm,
+        'hasExhaustFan': hasExhaustFan,
+        'exhaustFanShape': exhaustFanShape,
+        'exhaustFanDiameterCm': exhaustFanDiameterCm,
+        'exhaustFanPosition': exhaustFanPosition,
         'hasGlass': hasGlass,
         'isDoubleGlass': isDoubleGlass,
         'glass1Id': glass1Id,
@@ -427,43 +461,48 @@ class ClientWindowItem {
         'georgianPricePerMeter': georgianPricePerMeter,
       };
 
-  factory ClientWindowItem.fromJson(Map<String, dynamic> json) =>
-      ClientWindowItem(
-        id: json['id']?.toString() ?? '',
-        label: json['label']?.toString() ?? 'بند',
-        unitType: json['unitType']?.toString() ?? 'شباك',
-        openType: json['openType']?.toString() ?? 'جرار',
-        barType: json['barType']?.toString() ?? 'بار عادي',
-        openDirection: json['openDirection']?.toString() ?? 'يمين للداخل',
-        sectorId: json['sectorId']?.toString() ?? '',
-        sectorName: json['sectorName']?.toString() ?? '',
-        sectorPricePerM2:
-            (json['sectorPricePerM2'] as num?)?.toDouble() ?? 2200.0,
-        widthCm: (json['widthCm'] as num?)?.toDouble() ?? 120.0,
-        heightCm: (json['heightCm'] as num?)?.toDouble() ?? 120.0,
-        quantity: (json['quantity'] as num?)?.toInt() ?? 1,
-        sashCount: (json['sashCount'] as num?)?.toInt() ?? 2,
-        hasGlass: json['hasGlass'] != false,
-        isDoubleGlass: json['isDoubleGlass'] == true,
-        glass1Id: json['glass1Id']?.toString(),
-        glass1Name: json['glass1Name']?.toString() ?? 'زجاج شفاف 6 مم',
-        glass1PricePerM2:
-            (json['glass1PricePerM2'] as num?)?.toDouble() ?? 450.0,
-        glass2Id: json['glass2Id']?.toString(),
-        glass2Name: json['glass2Name']?.toString() ?? 'زجاج عاكس 6 مم',
-        glass2PricePerM2:
-            (json['glass2PricePerM2'] as num?)?.toDouble() ?? 550.0,
-        spacerPricePerMeter:
-            (json['spacerPricePerMeter'] as num?)?.toDouble() ?? 45.0,
-        hasGeorgianBars: json['hasGeorgianBars'] == true,
-        georgianMetersPerWindow:
-            (json['georgianMetersPerWindow'] as num?)?.toDouble() ?? 0.0,
-        georgianPricePerMeter:
-            (json['georgianPricePerMeter'] as num?)?.toDouble() ?? 85.0,
+  factory ClientWindowItem.fromJson(Map<String, dynamic> json) => ClientWindowItem(
+        id: json['id'] ?? '',
+        label: json['label'] ?? 'شباك',
+        unitType: json['unitType'] ?? 'شباك',
+        openType: json['openType'] ?? 'جرار',
+        barType: json['barType'] ?? 'بار عادي',
+        openDirection: json['openDirection'] ?? 'يمين للداخل',
+        sectorId: json['sectorId'] ?? '',
+        sectorName: json['sectorName'] ?? '',
+        sectorPricePerM2: (json['sectorPricePerM2'] as num?)?.toDouble() ?? 2500.0,
+        widthCm: (json['widthCm'] as num?)?.toDouble() ?? 100.0,
+        heightCm: (json['heightCm'] as num?)?.toDouble() ?? 100.0,
+        quantity: json['quantity'] ?? 1,
+        sashCount: json['sashCount'] ?? 2,
+        hasTopFixed: json['hasTopFixed'] ?? false,
+        topFixedHeightCm: (json['topFixedHeightCm'] as num?)?.toDouble() ?? 40.0,
+        hasBottomFixed: json['hasBottomFixed'] ?? false,
+        bottomFixedHeightCm: (json['bottomFixedHeightCm'] as num?)?.toDouble() ?? 40.0,
+        hasRightFixed: json['hasRightFixed'] ?? false,
+        rightFixedWidthCm: (json['rightFixedWidthCm'] as num?)?.toDouble() ?? 40.0,
+        hasLeftFixed: json['hasLeftFixed'] ?? false,
+        leftFixedWidthCm: (json['leftFixedWidthCm'] as num?)?.toDouble() ?? 40.0,
+        hasExhaustFan: json['hasExhaustFan'] ?? false,
+        exhaustFanShape: json['exhaustFanShape'] ?? 'دائري',
+        exhaustFanDiameterCm: (json['exhaustFanDiameterCm'] as num?)?.toDouble() ?? 25.0,
+        exhaustFanPosition: json['exhaustFanPosition'] ?? 'في الثابت العلوي',
+        hasGlass: json['hasGlass'] ?? true,
+        isDoubleGlass: json['isDoubleGlass'] ?? false,
+        glass1Id: json['glass1Id'],
+        glass1Name: json['glass1Name'] ?? 'زجاج شفاف 6 مم',
+        glass1PricePerM2: (json['glass1PricePerM2'] as num?)?.toDouble() ?? 450.0,
+        glass2Id: json['glass2Id'],
+        glass2Name: json['glass2Name'] ?? 'زجاج عاكس 6 مم',
+        glass2PricePerM2: (json['glass2PricePerM2'] as num?)?.toDouble() ?? 550.0,
+        spacerPricePerMeter: (json['spacerPricePerMeter'] as num?)?.toDouble() ?? 45.0,
+        hasGeorgianBars: json['hasGeorgianBars'] ?? false,
+        georgianMetersPerWindow: (json['georgianMetersPerWindow'] as num?)?.toDouble() ?? 0.0,
+        georgianPricePerMeter: (json['georgianPricePerMeter'] as num?)?.toDouble() ?? 85.0,
       );
 }
 
-/// سجل العميل الكامل
+/// سجل مقايسة العميل
 class ClientRecord {
   String id;
   String clientName;
@@ -497,31 +536,37 @@ class ClientRecord {
       };
 
   factory ClientRecord.fromJson(Map<String, dynamic> json) => ClientRecord(
-        id: json['id']?.toString() ?? '',
-        clientName: json['clientName']?.toString() ?? '',
-        clientPhone: json['clientPhone']?.toString() ?? '',
-        clientAddress: json['clientAddress']?.toString() ?? '',
-        createdAt: json['createdAt']?.toString() ?? '',
-        notes: json['notes']?.toString() ?? '',
+        id: json['id'] ?? '',
+        clientName: json['clientName'] ?? '',
+        clientPhone: json['clientPhone'] ?? '',
+        clientAddress: json['clientAddress'] ?? '',
+        createdAt: json['createdAt'] ?? '',
+        notes: json['notes'] ?? '',
         discountAmount: (json['discountAmount'] as num?)?.toDouble() ?? 0.0,
-        items: (json['items'] as List<dynamic>? ?? [])
-            .map((e) => ClientWindowItem.fromJson(Map<String, dynamic>.from(e)))
-            .toList(),
+        items: (json['items'] as List<dynamic>?)
+                ?.map((e) => ClientWindowItem.fromJson(Map<String, dynamic>.from(e)))
+                .toList() ??
+            [],
       );
 }
 
+/// نموذج خطة تقطيع العود 600 سم
 class BarCutPlan {
-  int barNumber;
-  double stockLengthCm;
-  List<double> cutsCm;
+  int barIndex;
+  double barLengthCm;
+  double kerfMm;
+  List<double> cutPiecesCm;
   double usedLengthCm;
   double wasteLengthCm;
+  double wastePercentage;
 
   BarCutPlan({
-    required this.barNumber,
-    required this.stockLengthCm,
-    required this.cutsCm,
+    required this.barIndex,
+    this.barLengthCm = 600.0,
+    this.kerfMm = 4.0,
+    required this.cutPiecesCm,
     required this.usedLengthCm,
     required this.wasteLengthCm,
+    required this.wastePercentage,
   });
 }

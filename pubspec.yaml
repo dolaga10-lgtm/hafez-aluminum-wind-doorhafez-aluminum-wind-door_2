@@ -29,6 +29,9 @@ flutter:
   assets:
     - assets/fonts/
     - assets/images/
+    - assets/images/windows/
+    - assets/images/windows/slide/
+    - assets/images/windows/systems/
   fonts:
     - family: Rubik
       fonts:
