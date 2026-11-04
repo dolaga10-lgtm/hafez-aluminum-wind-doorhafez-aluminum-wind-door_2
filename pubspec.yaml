@@ -1,0 +1,39 @@
+name: smart_workshop
+description: تطبيق الورشة الذكية المخصص لإدارة القطاعات والتخصيمات وتقسيم الأعواد وعروض الأسعار (بدون إعلانات)
+publish_to: 'none'
+version: 4.0.0+120
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  shared_preferences: ^2.2.3
+  image_picker: ^1.1.2
+  path_provider: ^2.1.3
+  pdf: ^3.11.0
+  printing: ^5.13.1
+  share_plus: ^9.0.0
+  intl: any
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/fonts/
+    - assets/images/
+  fonts:
+    - family: Rubik
+      fonts:
+        - asset: assets/fonts/Rubik-Regular.ttf
+        - asset: assets/fonts/Rubik-Bold.ttf
+          weight: 700
+    - family: Hacen
+      fonts:
+        - asset: assets/fonts/Hacen_Tunisia.ttf
