@@ -58,6 +58,21 @@ jobs:
           if [ -f android_manifest_custom.xml ]; then
             cp android_manifest_custom.xml android/app/src/main/AndroidManifest.xml
           fi
+          # رفع compileSdk لكل المكتبات (مكتبة printing كانت مبنية على android-30)
+          cat >> android/build.gradle.kts <<'EOF'
+
+          subprojects {
+              val forceCompileSdk: Project.() -> Unit = {
+                  val ext = extensions.findByName("android")
+                  if (ext != null) {
+                      val m = ext.javaClass.methods.firstOrNull { it.name == "setCompileSdk" && it.parameterCount == 1 }
+                          ?: ext.javaClass.methods.firstOrNull { it.name == "compileSdkVersion" && it.parameterCount == 1 && it.parameterTypes[0] == Int::class.javaPrimitiveType }
+                      m?.invoke(ext, 36)
+                  }
+              }
+              if (state.executed) forceCompileSdk() else afterEvaluate { forceCompileSdk() }
+          }
+          EOF
 
       - name: Install Flutter Dependencies
         run: flutter pub get
