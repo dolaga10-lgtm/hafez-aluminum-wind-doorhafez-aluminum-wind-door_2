@@ -35,9 +35,26 @@ jobs:
         run: |
           cp pubspec.yaml /tmp/pubspec_backup.yaml
           cp -r lib /tmp/lib_backup
+          # حفظ الأيقونات المخصصة (المجلدات -v4) ثم حذفها لمنع تكرار الموارد
+          mkdir -p /tmp/custom_icons
+          for d in android/app/src/main/res/mipmap-*-v4; do
+            [ -d "$d" ] || continue
+            base=$(basename "$d"); base=${base%-v4}
+            mkdir -p "/tmp/custom_icons/$base"
+            cp "$d"/* "/tmp/custom_icons/$base/"
+            rm -rf "$d"
+          done
           flutter create . --project-name smart_workshop --org com.smartworkshop --platforms android
           cp /tmp/pubspec_backup.yaml pubspec.yaml
           cp -r /tmp/lib_backup/* lib/
+          # إعادة الأيقونات المخصصة بنفس أسماء المجلدات القياسية (بدون -v4)
+          if [ -d /tmp/custom_icons ]; then
+            for d in /tmp/custom_icons/*; do
+              [ -d "$d" ] || continue
+              mkdir -p "android/app/src/main/res/$(basename "$d")"
+              cp "$d"/* "android/app/src/main/res/$(basename "$d")/"
+            done
+          fi
           if [ -f android_manifest_custom.xml ]; then
             cp android_manifest_custom.xml android/app/src/main/AndroidManifest.xml
           fi
