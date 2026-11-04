@@ -194,7 +194,7 @@ class _PricingSettingsScreenState extends State<PricingSettingsScreen> {
                             style: const TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 13.5),
                           ),
-                          subtitle: Text('النظام: ${sec.category}'),
+                          subtitle: Text('المجموعة: ${sec.companyGroup} | النظام: ${sec.systemType}'),
                           trailing: OutlinedButton.icon(
                             onPressed: () => _editSectorPriceDialog(sec),
                             icon: const Icon(Icons.edit, size: 16),

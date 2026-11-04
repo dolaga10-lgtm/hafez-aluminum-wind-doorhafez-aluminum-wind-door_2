@@ -109,6 +109,7 @@ class SectorProfile {
   double glassHeightDeductCm; // خصم ارتفاع الزجاج من ارتفاع الضلفة (سم)
   bool isCustom;
   List<SectorPart> parts;
+  String get category => companyGroup;
 
   SectorProfile({
     required this.id,

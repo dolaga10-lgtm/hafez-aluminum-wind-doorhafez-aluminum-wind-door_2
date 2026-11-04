@@ -403,7 +403,7 @@ class _HafezAuthGateScreenState extends State<HafezAuthGateScreen>
                               ),
                               onPressed: _isLoading ? null : () => _performLogin(),
                               child: _isLoading
-                                  const SizedBox(
+                                  ? const SizedBox(
                                       width: 22,
                                       height: 22,
                                       child: CircularProgressIndicator(
